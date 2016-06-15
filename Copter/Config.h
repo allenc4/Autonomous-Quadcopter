@@ -16,7 +16,7 @@
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
 #define DEBUG_ENABLED	ENABLED
-//#define ESC_CALIBRATE	DISABLED
+#define ESC_CALIBRATE	DISABLED
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -36,40 +36,14 @@
 # define SERIAL0_BAUD HAL_SERIAL0_BAUD_DEFAULT
 #endif
 
-
-//#define MAGNETOMETER ENABLED
-
-//#if HAL_CPU_CLASS < HAL_CPU_CLASS_75 || CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
-// // low power CPUs (APM1, APM2 and SITL)
-// # define MAIN_LOOP_RATE    100
-// # define MAIN_LOOP_SECONDS 0.01
-// # define MAIN_LOOP_MICROS  10000
-//#elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
-// // Linux boards
-// # define MAIN_LOOP_RATE    200
-// # define MAIN_LOOP_SECONDS 0.005
-// # define MAIN_LOOP_MICROS  5000
-//#else
-// // high power CPUs (Flymaple, PX4, Pixhawk, VRBrain)
-// # define MAIN_LOOP_RATE    400
-// # define MAIN_LOOP_SECONDS 0.0025
-// # define MAIN_LOOP_MICROS  2500
-//#endif
-
-//////////////////////////////////////////////////////////////////////////////
-// FRAME_CONFIG
-//
-//#define FRAME_CONFIG   QUAD_FRAME
-
 //////////////////////////////////////////////////////////////////////////////
 // Receiver input pins (start from 0 NOT 1)
 #define RC_CHANNEL_ROLL		0
 #define RC_CHANNEL_PITCH	1
-#define RC_CHANNEL_THROTTLE	2
-#define RC_CHANNEL_YAW		3
-#define RC_CHANNEL_AUX_1	4
+#define RC_CHANNEL_THROTTLE	5
+#define RC_CHANNEL_YAW		6
+#define RC_CHANNEL_AUX_1	7
 
-//////////////////////////////////////////////////////////////////////////////
 // RC MIN and MAX values
 #define RC_YAW_MIN       966
 #define RC_YAW_MAX       1994
@@ -88,6 +62,11 @@
 #define RC_PITCH_MIN_SCALED	-45
 #define RC_PITCH_MAX_SCALED	 45
 
+// Inertial sensor values for pitch, roll, and yaw need to be stable before flight.
+// If the difference between the last read sensor value and current value is less than
+// or equal to the min_update (in radians), the sensor is ready
+#define INS_SENSOR_MIN_UPDATE_RAD      0.0001
+
 //////////////////////////////////////////////////////////////////////////////
 // Serial port speeds.
 //
@@ -97,13 +76,10 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Motor mapping
-#define MOTOR_FL    2  // Front left
-#define MOTOR_FR    0  // Front Right
-#define MOTOR_BL    1  // Back Left
-#define MOTOR_BR    3  // Back Right
-
-#define MOTOR_NUM_START  0  // Lowest number used by motor map
-#define MOTOR_NUM_END    3  // Highest number used by motor map
+#define MOTOR_FL    1  // Front left
+#define MOTOR_FR    6  // Front Right
+#define MOTOR_BL    0  // Back Left
+#define MOTOR_BR    7  // Back Right
 
 // ESC update speed
 #define RC_FAST_SPEED       490

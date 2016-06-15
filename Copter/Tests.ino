@@ -22,6 +22,13 @@ void Tests::accel_Gyro_Test()
 void Tests::motor_Test()
 {
 	hal.console->println("Enter 'm' for motor tests, 'e' to exit.\n");
+
+	int8_t motors[4] = {
+			MOTOR_FR,
+			MOTOR_BR,
+			MOTOR_FL,
+			MOTOR_BL};
+
 	while (1)
 	{
 		while (hal.console->available() == 0)
@@ -32,11 +39,11 @@ void Tests::motor_Test()
 		char t = hal.console->read();
 		if (t == 'm')
 		{
-			for (int8_t i = MOTOR_NUM_START; i <= MOTOR_NUM_END; i++)
+			for (int8_t i = 0; i < 4; i++)
 			{
 				// Test motor i; user can choose various PWM options.
 				// This is a blocking call
-			    individual_Motor_Test(i);
+			    individual_Motor_Test(motors[i]);
 
 			    // After testing that particular motor, turn it off
 			    hal.rcout->write(i, 0);

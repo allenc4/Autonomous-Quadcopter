@@ -17,13 +17,14 @@ public:
 	void output();
 	void output_Min();
 	void output_Zero();
+	void calibrate_ESCs();
 
 
 //	void calibrate_ESC();
 //	static void Calibrate_ESCs();
 
 private:
-	const int8_t min_throttle_offset = 50;
+	const int8_t min_throttle_offset = 75;
 };
 
 
