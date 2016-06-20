@@ -26,7 +26,6 @@
 // Local includes
 #include "Config.h"
 #include "Motors.h"
-#include "INS_Calibrate.h"
 
 // ArduPilot Hardware Abstraction Layer
 const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
@@ -127,11 +126,6 @@ void setup()
 		prev_sensor_pitch = sensor_pitch;
 		prev_sensor_yaw = sensor_yaw;
 
-	}
-
-	if (GET_INS_OFFSET == ENABLED) {
-		INS_Calibrate ins_offset = INS_Calibrate();
-		ins_offset.start_calibration();
 	}
 
 	motors.init_yaw();

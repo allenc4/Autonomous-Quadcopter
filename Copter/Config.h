@@ -17,7 +17,6 @@
 // For debugging/testing only. Disable when used for flight
 #define DEBUG_ENABLED	ENABLED
 #define ESC_CALIBRATE	DISABLED
-#define GET_INS_OFFSET	DISABLED
 
 
 //////////////////////////////////////////////////////////////////////////////
