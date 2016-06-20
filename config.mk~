@@ -9,7 +9,7 @@ HAL_BOARD ?= HAL_BOARD_APM2
 PORT = /dev/ttyACM0
 
 # uncomment and fill in the path to Arduino if installed in an exotic location
-ARDUINO = C:/ArduPilot-Arduino-1.0.3-windows
+#ARDUINO = C:/ArduPilot-Arduino-1.0.3-windows
 
 # PX4Firmware tree: fill in the path to PX4Firmware repository from github.com/diydrones:
 PX4_ROOT=../PX4Firmware
@@ -22,3 +22,4 @@ VRBRAIN_ROOT=../VRNuttX
 # VRBRAIN NuttX tree:
 VRBRAIN_NUTTX_SRC=../VRNuttX/NuttX/nuttx
 
+USERAVRDUDEFLAGS = -V -v -v

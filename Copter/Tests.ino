@@ -5,21 +5,88 @@
  *      Author: chris
  */
 
-#include "Tests.h"
+#include <AP_Progmem_AVR.h>
+#include <AP_HAL.h>
+#include <AP_HAL_AVR.h>
 
+#include "Config.h"
 /**
  * Test accelerometer and gyroscope readings.
  */
-void Tests::accel_Gyro_Test()
+void accel_Gyro_Test()
 {
-	// TODO - Implement Accel_Gyro_Test() to work with external accel/gyro chip
+	Vector3f accel;
+	Vector3f gyro;
+
+	hal.console->println("Enter 'a' for accelerometer values, 'g' for gyroscope values, "
+			"'b' for both accelerometer and gyroscope values, "
+			"'s' for roll/pitch/yaw sensor data, or 'e' to exit.\n");
+
+	while (1)
+	{
+		char input;
+
+		if (hal.console->available())
+			input = hal.console->read();
+
+		if (input == 'e')
+			break;
+		else
+		{
+			// Clear out any existing samples from ins
+			ins.update();
+			// Wait until we have a sample
+			while (ins.num_samples_available() == 0);
+
+			if (input == 'a')
+			{
+				// Read sample from ins
+				accel = ins.get_accel();
+
+				// Display results
+				hal.console->printf_P(PSTR("Accelerometer X:%4.2f \t Y:%4.2f \t Z:%4.2f\n"),
+									  ToDeg(accel.x),
+									  ToDeg(accel.y),
+									  ToDeg(accel.z));
+
+			} else if (input == 'g')
+			{
+				gyro = ins.get_gyro();
+
+				hal.console->printf_P(PSTR("Gyroscope X:%4.2f \t Y:%4.2f \t Z:%4.2f\n"),
+									  ToDeg(gyro.x),
+									  ToDeg(gyro.y),
+									  ToDeg(gyro.z));
+			} else if (input == 'b')
+			{
+				accel = ins.get_accel();
+				gyro  = ins.get_gyro();
+
+				hal.console->printf_P(PSTR("Accelerometer X:%4.2f \t Y:%4.2f \t Z:%4.2f \t Gyroscope X:%4.2f \t Y:%4.2f \t Z:%4.2f\n"),
+									  ToDeg(accel.x), ToDeg(accel.y), ToDeg(accel.z),
+									  ToDeg(gyro.x), ToDeg(gyro.y), ToDeg(gyro.z));
+			} else if (input == 's')
+			{
+				float sensor_roll,sensor_pitch,sensor_yaw;
+				ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
+				//ins.set_accel_offsets();
+
+				hal.console->printf_P(PSTR("Gyroscope roll:%4.1f \t pitch:%4.1f \t yaw:%4.1f\n"),
+									  ToDeg(sensor_roll),
+									  ToDeg(sensor_pitch),
+									  ToDeg(sensor_yaw));
+			}
+
+			hal.scheduler->delay(100);
+		}
+	}
 }
 
 /**
  * Test individual motors from serial client.
  * Enter 'm' to test each motor. User will have option to set PWM rate to motor.
  */
-void Tests::motor_Test()
+void motor_Test()
 {
 	hal.console->println("Enter 'm' for motor tests, 'e' to exit.\n");
 
@@ -61,7 +128,7 @@ void Tests::motor_Test()
  * Test Motor motor_num. All testing performed through serial CLI
  * @param motor_num Motor number interested in testing
  */
-void Tests::individual_Motor_Test(int8_t motor_num)
+void individual_Motor_Test(int8_t motor_num)
 {
 	uint16_t t_throttle = 0;
 	bool breakLoop = false;

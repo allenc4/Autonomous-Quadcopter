@@ -17,6 +17,7 @@
 // For debugging/testing only. Disable when used for flight
 #define DEBUG_ENABLED	ENABLED
 #define ESC_CALIBRATE	DISABLED
+#define GET_INS_OFFSET	DISABLED
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -65,7 +66,12 @@
 // Inertial sensor values for pitch, roll, and yaw need to be stable before flight.
 // If the difference between the last read sensor value and current value is less than
 // or equal to the min_update (in radians), the sensor is ready
-#define INS_SENSOR_MIN_UPDATE_RAD      0.0001
+#define INS_SENSOR_MIN_UPDATE_RAD    0.0001
+
+// Offsets for roll and pitch sensor values
+// Yaw offset not explicitly defined since it is reset at every start
+#define INS_ROLL_OFFSET 	177.9
+#define INS_PITCH_OFFSET	-2.4
 
 //////////////////////////////////////////////////////////////////////////////
 // Serial port speeds.
@@ -89,12 +95,12 @@
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
-#define PID_PITCH_RATE 0
-#define PID_ROLL_RATE 1
-#define PID_PITCH_STAB 2
-#define PID_ROLL_STAB 3
-#define PID_YAW_RATE 4
-#define PID_YAW_STAB 5
+#define PID_PITCH_RATE 	0
+#define PID_ROLL_RATE 	1
+#define PID_PITCH_STAB 	2
+#define PID_ROLL_STAB 	3
+#define PID_YAW_RATE 	4
+#define PID_YAW_STAB 	5
 
 //#define ROLL_PITCH_INPUT_MAX      4500            // roll, pitch input range (45 degrees)
 //#define DEFAULT_ANGLE_MAX         4500            // Maximum lean angle (45 degrees)

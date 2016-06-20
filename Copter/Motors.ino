@@ -32,41 +32,123 @@ void Motors::output(uint16_t motor_num, uint16_t pwm) {
  * we just directly pass the pwm response from the throttle to the motors.
  */
 void Motors::output() {
+
+	// Get yaw/pitch/roll data from MPU6050 sensor and convert to degrees
+	ins.update();
+	float sensor_roll,sensor_pitch,sensor_yaw;
+	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
+	sensor_roll = ToDeg(sensor_roll);
+	// Fix roll data because APM is upside down :)
+	if (sensor_roll < 0) {
+		sensor_roll += INS_ROLL_OFFSET;
+	} else {
+		sensor_roll -= INS_ROLL_OFFSET;
+	}
+	sensor_pitch = ToDeg(sensor_pitch) + INS_PITCH_OFFSET;
+	sensor_yaw = ToDeg(sensor_yaw);
+
+	if (DEBUG_ENABLED) {
+		loop_count++;
+
+		//We do not want the serial line to get flooded, so print out once every 20 times through or so
+		if (loop_count > 20) {
+			loop_count = 0;
+
+			// Print out the sensor yaw/pitch/roll data in degrees
+//			hal.console->printf("Pitch: %4.1f   Roll: %4.1f   Yaw: %4.1f\n",
+//					sensor_pitch,
+//					sensor_roll,
+//					sensor_yaw);
+
+//			hal.console->printf_P(PSTR("individual read THR %d YAW %d PIT %d ROLL %d\r\n"),
+//					rc_channels[RC_CHANNEL_THROTTLE],
+//					rc_channels[RC_CHANNEL_YAW],
+//					rc_channels[RC_CHANNEL_PITCH],
+//					rc_channels[RC_CHANNEL_ROLL]);
+		}
+
+
+	}
+
 	// Get rotational velocity data for each axis from the gyro and convert from rad/sec to deg
 	Vector3f gyro = ins.get_gyro();
 	float gyro_pitch = ToDeg(gyro.y);
 	float gyro_roll = ToDeg(gyro.x);
 	float gyro_yaw = ToDeg(gyro.z);
 
-	// Perform acrobatic stabilization only if throttle is above minimum level
+	// Perform stabilization only if throttle is above minimum level
 	if (rc_channels[RC_CHANNEL_THROTTLE] > RC_THROTTLE_MIN + min_throttle_offset) {
 
-		// To get the PID, we need to get the error from we we currently are to where we want to be
-		long pitch_output = pids[PID_PITCH_RATE].get_pid(gyro_pitch - rc_channels[RC_CHANNEL_PITCH], 1);
-		long roll_output  = pids[PID_ROLL_RATE].get_pid(gyro_roll - rc_channels[RC_CHANNEL_ROLL], 1);
-		long yaw_output   = pids[PID_YAW_RATE].get_pid(gyro_yaw - rc_channels[RC_CHANNEL_YAW], 1);
+		// To get the PID, we need to get the error from where we currently are to where we want to be
 
-		output(MOTOR_FL, rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output - yaw_output);
-		output(MOTOR_BL, rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output + yaw_output);
-		output(MOTOR_FR, rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output + yaw_output);
-		output(MOTOR_BR, rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output - yaw_output);
+		// Stability PIDS
+		float stab_output_pitch = constrain_float(
+				pids[PID_PITCH_STAB].get_pid((float)rc_channels[RC_CHANNEL_PITCH] - sensor_pitch, 1),
+				-250,
+				250);
+		float stab_output_roll = constrain_float(
+				pids[PID_ROLL_STAB].get_pid((float)rc_channels[RC_CHANNEL_ROLL] - sensor_roll, 1),
+				-250,
+				250);
+		float stab_output_yaw = constrain_float(
+				pids[PID_YAW_STAB].get_pid(wrap_180(target_yaw - sensor_yaw), 1),
+				-360,
+				360);
+
+		// If controller asks for yaw change, overwrite stab_output for the yaw value
+		// Yaw value will be between -150 and 150 so if there is a radio value greater than a 5
+		// degree offset, rotate
+		if (abs(rc_channels[RC_CHANNEL_YAW]) > 5) {
+			stab_output_yaw = rc_channels[RC_CHANNEL_YAW];
+			target_yaw = sensor_yaw; // remember for when radio stops
+		}
+
+		// Acrobatic/Rate PIDS
+		long pitch_output = (long) constrain_int16(
+				pids[PID_PITCH_RATE].get_pid(stab_output_pitch - gyro_pitch, 1),
+				-500,
+				500);
+		long roll_output  = (long) constrain_int16(
+				pids[PID_ROLL_RATE].get_pid(stab_output_roll - gyro_roll, 1),
+				-500,
+				500);
+		long yaw_output   = (long) constrain_int16(
+				pids[PID_YAW_RATE].get_pid(stab_output_yaw - gyro_yaw, 1),
+				-500,
+				500);
+
+		// Only worry about yaw change if the pitch and roll values are semi-stable first.
+		// We want the multirotor level before we make any yaw adjustments.
+		if (abs(pitch_output) > 10 || abs(roll_output) > 10) {
+			yaw_output = 0;
+		}
+//		// PIDS for rate mode only
+		// error = desired - actual
+//		long pitch_output =   pids[PID_PITCH_RATE].get_pid(rc_channels[RC_CHANNEL_PITCH] - gyro_pitch, 1);
+//		long roll_output  =   pids[PID_ROLL_RATE].get_pid(rc_channels[RC_CHANNEL_ROLL] - gyro_roll, 1);
+//		long yaw_output   =   pids[PID_YAW_RATE].get_pid(rc_channels[RC_CHANNEL_YAW] - gyro_yaw, 1);
+
+		output(MOTOR_FL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output - yaw_output);
+		output(MOTOR_BL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output + yaw_output);
+		output(MOTOR_FR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output + yaw_output);
+		output(MOTOR_BR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output - yaw_output);
 
 		// Print out the sensor yaw/pitch/roll data in degrees
 		if (DEBUG_ENABLED && loop_count == 20) {
-			hal.console->printf("Motor PWMs....FL: %li    BL: %li    FR: %li    BR: %li        ",
-					rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output - yaw_output,
-					rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output + yaw_output,
-					rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output + yaw_output,
-					rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output - yaw_output);
+			hal.console->printf("Motor PWMs....FL: %li\t BL: %li\t FR: %li\t BR: %li\t\t",
+					rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output - yaw_output,
+					rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output + yaw_output,
+					rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output + yaw_output,
+					rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output - yaw_output);
 
-			hal.console->printf("RC throt: %li    RC pit: %li    RC roll: %li    RC yaw: %li        ",
+			hal.console->printf("RC throt: %li\t RC pit: %li\t RC roll: %li\t RC yaw: %li\t\t",
 					rc_channels[RC_CHANNEL_THROTTLE],
 					rc_channels[RC_CHANNEL_PITCH],
 					rc_channels[RC_CHANNEL_ROLL],
 					rc_channels[RC_CHANNEL_YAW]);
-			hal.console->printf("Gyro pitch: %4.1f    Gyro roll: %4.1f    Gyro yaw: %4.1f          ",
+			hal.console->printf("Gyro pitch: %4.1f\t Gyro roll: %4.1f\t Gyro yaw: %4.1f\t\t",
 					gyro_pitch, gyro_roll, gyro_yaw);
-			hal.console->printf("pitch_output: %li    roll_output: %li    yaw_output: %li\n",
+			hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\n",
 					pitch_output, roll_output, yaw_output);
 
 		}
@@ -78,6 +160,9 @@ void Motors::output() {
 			// Reset PID integrals while we are on the ground
 			pids[i].reset_I();
 		}
+
+		// reset yaw target so we maintain this on takeoff
+		target_yaw = sensor_yaw;
 	}
 }
 
@@ -107,13 +192,11 @@ void Motors::calibrate_ESCs() {
 	// (acknowledging they received the max throttle), the user will enter any key to continue,
 	// and the minimum throttle value will then be sent.
 
-	// Send max speed to all motors
-	int8_t motors[4] = {
-			MOTOR_FR,
-			MOTOR_BR,
-			MOTOR_FL,
-			MOTOR_BL};
+	// reduce update rate to motors to 50Hz
+	hal.rcout->set_freq(0xF, RC_SLOW_SPEED);  // Send 490Hz pulse to negate ESC averaging filter effect
+	hal.rcout->enable_mask(0xFF);
 
+	// Send max speed to all motors
 	hal.console->println("Sending max throttle response to motors now...\n");
 
 	for (int i = 0; i < 4; i++) {
@@ -140,5 +223,33 @@ void Motors::calibrate_ESCs() {
 
 	while (1) {
 		hal.scheduler->delay(20);
+	}
+}
+
+/**
+ * Before calling output, call this function to set the target yaw output to be the
+ * current sensor yaw value. This should be called in the setup() function, not in loop()
+ */
+void Motors::init_yaw() {
+	// Get yaw/pitch/roll data from MPU6050 sensor and convert to degrees
+	ins.update();
+	float sensor_roll,sensor_pitch;
+	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &target_yaw);
+
+	target_yaw = ToDeg(target_yaw);
+}
+
+/**
+ * Wraps the passed parameter to be between the -180 and +180 range. For example, if the parameter is -181,
+ * we return 179. Whereas if the parameter is 181, we return -179. If the parameter is between -180 and 180,
+ * we just return that value.
+ */
+float Motors::wrap_180(float x) {
+	if (x < -180) {
+		return x + 360;
+	} else if (x > 180) {
+		return x - 360;
+	} else {
+		return x;
 	}
 }

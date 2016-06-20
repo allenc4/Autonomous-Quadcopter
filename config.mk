@@ -22,3 +22,4 @@ VRBRAIN_ROOT=../VRNuttX
 # VRBRAIN NuttX tree:
 VRBRAIN_NUTTX_SRC=../VRNuttX/NuttX/nuttx
 
+USERAVRDUDEFLAGS = -V -v -v -D

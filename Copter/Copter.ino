@@ -24,9 +24,9 @@
 #include <PID.h>
 
 // Local includes
-#include "Tests.h"
 #include "Config.h"
 #include "Motors.h"
+#include "INS_Calibrate.h"
 
 // ArduPilot Hardware Abstraction Layer
 const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
@@ -67,13 +67,15 @@ void setup()
 	pids[PID_ROLL_STAB].kP(4.5);
 	pids[PID_YAW_STAB].kP(10);
 
-	Init_Arducopter();
-
 	// If we are calibrating ESCs, do that now
 	if (ESC_CALIBRATE == ENABLED) {
 		hal.console->println("Entering ESC calibration now....");
 		motors.calibrate_ESCs();
 	}
+
+	Init_Arducopter();
+	// Add offsets to roll and pitch
+
 
 	// Wait until roll, pitch, and yaw values are stable before we initialize the motors
 	// (multirotor is not moving and gyro sensor data is initialized)
@@ -127,6 +129,13 @@ void setup()
 
 	}
 
+	if (GET_INS_OFFSET == ENABLED) {
+		INS_Calibrate ins_offset = INS_Calibrate();
+		ins_offset.start_calibration();
+	}
+
+	motors.init_yaw();
+
 	Setup_Motors();
 }
 
@@ -147,12 +156,6 @@ void loop()
 //  hal.console->printf_P(
 //            PSTR("individual read THR %d YAW %d PIT %d ROLL %d\r\n"),
 //            rcthr, rcyaw, rcpit, rcroll);
-
-//	// If debugging is enabled, give a menu of options for configuring, testing, and debugging
-//	if (DEBUG_ENABLED == ENABLED) {
-//		hal.console->write("Testing is enabled. Choose from the available options...\n");
-//		hal.console->write("  (1) Calibrate ESCs");
-//	}
 
 	// Wait until new orientation data (normally 5ms max)
 	while (ins.num_samples_available() == 0);
@@ -185,53 +188,24 @@ void loop()
 
 	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
 
-	// Get yaw/pitch/roll data from MPU6050 sensor and convert to degrees
-	ins.update();
-	float sensor_roll,sensor_pitch,sensor_yaw;
-	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
-	sensor_roll = ToDeg(sensor_roll);
-	// Fix roll data because APM is upside down :)
-	if (sensor_roll < 0) {
-		sensor_roll += 180;
-	} else {
-		sensor_roll -= 180;
-	}
-	sensor_pitch = ToDeg(sensor_pitch) ;
-	sensor_yaw = ToDeg(sensor_yaw) ;
+	// DEBUGGING PURPOSES ONLY ///////////////////////////////
+//	rc_channels[RC_CHANNEL_THROTTLE] = RC_THROTTLE_MIN + 400;
+//	rc_channels[RC_CHANNEL_ROLL] = 0;
+//	rc_channels[RC_CHANNEL_PITCH] = 0;
+//	rc_channels[RC_CHANNEL_YAW] = 0;
 
-	if (DEBUG_ENABLED) {
-		loop_count++;
-
-		//We do not want the serial line to get flooded, so print out once every 20 times through or so
-		if (loop_count > 20) {
-			loop_count = 0;
-
-			// Print out the sensor yaw/pitch/roll data in degrees
-//			hal.console->printf("Pitch: %4.1f   Roll: %4.1f   Yaw: %4.1f\n",
-//					sensor_pitch,
-//					sensor_roll,
-//					sensor_yaw);
-
-//			hal.console->printf_P(PSTR("individual read THR %d YAW %d PIT %d ROLL %d\r\n"),
-//					rc_channels[RC_CHANNEL_THROTTLE],
-//					rc_channels[RC_CHANNEL_YAW],
-//					rc_channels[RC_CHANNEL_PITCH],
-//					rc_channels[RC_CHANNEL_ROLL]);
-		}
-
-
-	}
-
+	// Test and display accelerometer/gyro values
+//	accel_Gyro_Test();
 
 	// Output throttle response to motors
-	motors.output();
+	 motors.output();
 
 }
 
-AP_HAL_MAIN();    // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).
+AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).
 
 /**
- *  Scales the x param (RC stick value) so that it represent something meaningful.
+ *  Scales the x parameter and scales it so it is between a new min and max rangethat it represent something meaningful.
  *  Takes a number between one range and places it in another – e.g., if we had a value of 50,
  *      which was between 0-100, and we wanted to scale it to be between 0 and 500,
  *      the map function would return 250.
