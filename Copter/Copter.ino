@@ -27,11 +27,14 @@
 #include "Config.h"
 #include "Motors.h"
 
-// ArduPilot Hardware Abstraction Layer
+// ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
 
 // MPU6050 accel/gyro chip
 AP_InertialSensor_MPU6000 ins;
+
+// Roll and pitch trim values
+float trim_roll, trim_pitch;
 
 // RC receiver channel values
 long rc_channels[8];
@@ -43,7 +46,6 @@ PID pids[6];
 
 uint16_t loop_count;
 
-
 void setup()
 {
 
@@ -51,15 +53,18 @@ void setup()
 
 	// Initialize PID array
 	pids[PID_PITCH_RATE].kP(0.7);
-	//  pids[PID_PITCH_RATE].kI(1);
+//	pids[PID_PITCH_RATE].kI(1);
+//	pids[PID_PITCH_RATE].kD(0.004);
 	pids[PID_PITCH_RATE].imax(50);
 
 	pids[PID_ROLL_RATE].kP(0.7);
-	//  pids[PID_ROLL_RATE].kI(1);
-	pids[PID_ROLL_RATE].imax(50);
+//	pids[PID_ROLL_RATE].kI();
+//	pids[PID_ROLL_RATE].kD(0.004);
+	pids[PID_ROLL_RATE].imax(100);
 
-	pids[PID_YAW_RATE].kP(0.7);
-	//  pids[PID_YAW_RATE].kI(1);
+	pids[PID_YAW_RATE].kP(0.200);
+//	pids[PID_YAW_RATE].kI(0.020);
+//	pids[PID_YAW_RATE].kD(0);
 	pids[PID_YAW_RATE].imax(50);
 
 	pids[PID_PITCH_STAB].kP(4.5);
@@ -130,6 +135,8 @@ void setup()
 
 	motors.init_yaw();
 
+//	accel_calibration();
+
 	Setup_Motors();
 }
 
@@ -173,7 +180,7 @@ void loop()
 			RC_ROLL_MIN_SCALED,
 			RC_ROLL_MAX_SCALED);
 
-	rc_channels[RC_CHANNEL_PITCH] = map(
+	rc_channels[RC_CHANNEL_PITCH] = -map(
 			channels[RC_CHANNEL_PITCH],
 			RC_PITCH_MIN,
 			RC_PITCH_MAX,
@@ -188,11 +195,17 @@ void loop()
 //	rc_channels[RC_CHANNEL_PITCH] = 0;
 //	rc_channels[RC_CHANNEL_YAW] = 0;
 
+	// Test each individual motor
+//	motor_Test();
+
 	// Test and display accelerometer/gyro values
 //	accel_Gyro_Test();
 
 	// Output throttle response to motors
 	 motors.output();
+
+	// Directly output throttle from receiver (TESTING ONLY!!!!!
+//	motors.output_Throttle();
 
 }
 

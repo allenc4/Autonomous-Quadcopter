@@ -15,7 +15,7 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG_ENABLED	ENABLED
+#define DEBUG_ENABLED	DISABLED
 #define ESC_CALIBRATE	DISABLED
 
 
@@ -40,9 +40,9 @@
 // Receiver input pins (start from 0 NOT 1)
 #define RC_CHANNEL_ROLL		0
 #define RC_CHANNEL_PITCH	1
-#define RC_CHANNEL_THROTTLE	5
-#define RC_CHANNEL_YAW		6
-#define RC_CHANNEL_AUX_1	7
+#define RC_CHANNEL_THROTTLE	2
+#define RC_CHANNEL_YAW		3
+#define RC_CHANNEL_AUX_1	4
 
 // RC MIN and MAX values
 #define RC_YAW_MIN       966
@@ -67,10 +67,27 @@
 // or equal to the min_update (in radians), the sensor is ready
 #define INS_SENSOR_MIN_UPDATE_RAD    0.0001
 
-// Offsets for roll and pitch sensor values
-// Yaw offset not explicitly defined since it is reset at every start
-#define INS_ROLL_OFFSET 	177.9
-#define INS_PITCH_OFFSET	-2.4
+/////////////////////////////////////////////////////////////////////
+// Offsets for gyroscope and accelerometer
+// INS Gyroscope
+#define INS_ROLL_OFFSET 	-1.05  //0.00579265487498855
+#define INS_PITCH_OFFSET	1.082921172521
+//#define INS_YAW_OFFSET		-0.9585314622399
+
+// Accelerometer offset in radians
+#define ACCEL_X_OFFSET		-0.9  // Roll
+#define ACCEL_Y_OFFSET		2.645 // Pitch
+#define ACCEL_Z_OFFSET		0 	  // Yaw
+//#define ACCEL_X_SCALE		1
+//#define ACCEL_Y_SCALE		1 //0.99
+//#define ACCEL_Z_SCALE		1
+
+#define TRIM_PITCH				-0.02
+#define TRIM_ROLL				-0.02
+
+#define THRESHOLD_PITCH_OUTPUT		10
+#define THRESHOLD_ROLL_OUTPUT		10
+#define THRESHOLD_YAW_OUTPUT		10
 
 //////////////////////////////////////////////////////////////////////////////
 // Serial port speeds.
@@ -81,10 +98,11 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Motor mapping
-#define MOTOR_FL    1  // Front left
-#define MOTOR_FR    6  // Front Right
-#define MOTOR_BL    0  // Back Left
-#define MOTOR_BR    7  // Back Right
+#define MOTOR_FL    2  // Front left
+#define MOTOR_FR    0  // Front Right
+#define MOTOR_BL    1  // Back Left
+#define MOTOR_BR    3  // Back Right
+
 
 // ESC update speed
 #define RC_FAST_SPEED       490
@@ -112,19 +130,19 @@
 // power-to-weight ratio of the copter with more powerful copters requiring lower rate PID values.
 //
 
-#define RATE_ROLL_P        		0.150f     // The higher the P, the higher the motor response to achieve desired turn rate
-#define RATE_ROLL_I        		0.100f     // A high I term will ramp quickly to hold the desired rate,
-#define RATE_ROLL_D        		0.004f     // D is used to dampen response of the copter to accelerations toward the desired set point.
-#define RATE_ROLL_IMAX         	1000
-
-#define RATE_PITCH_P       		0.150f
-#define RATE_PITCH_I       		0.100f
-#define RATE_PITCH_D       		0.004f
-#define RATE_PITCH_IMAX        	1000
-#define RATE_YAW_P             	0.200f
-#define RATE_YAW_I             	0.020f
-#define RATE_YAW_D             	0.000f
-#define RATE_YAW_IMAX           	1000
+//#define RATE_ROLL_P        		0.150f     // The higher the P, the higher the motor response to achieve desired turn rate
+//#define RATE_ROLL_I        		0.100f     // A high I term will ramp quickly to hold the desired rate,
+//#define RATE_ROLL_D        		0.004f     // D is used to dampen response of the copter to accelerations toward the desired set point.
+//#define RATE_ROLL_IMAX         	1000
+//
+//#define RATE_PITCH_P       		0.150f
+//#define RATE_PITCH_I       		0.100f
+//#define RATE_PITCH_D       		0.004f
+//#define RATE_PITCH_IMAX        	1000
+//#define RATE_YAW_P             	0.200f
+//#define RATE_YAW_I             	0.020f
+//#define RATE_YAW_D             	0.000f
+//#define RATE_YAW_IMAX           	1000
 
 //////////////////////////////////////////////////////////////////////////////
 // Throttle control gains

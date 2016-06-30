@@ -105,6 +105,7 @@ public:
 
     // get accel scale
     Vector3f get_accel_scale() { return _accel_scale; }
+    void	 set_accel_scale(Vector3f scale) { _accel_scale.set(scale); }
 
     /* Update the sensor data, so that getters are nonblocking.
      * Returns a bool of whether data was updated or not.

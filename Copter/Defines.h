@@ -16,6 +16,8 @@
 #define ENABLE ENABLED
 #define DISABLE DISABLED
 
+#define WP_START_BYTE 0x600 // where in memory home WP is stored + all other
+
 // Flight modes
 // ------------
 #define AUTO_YAW_HOLD                   0       // pilot controls the heading
@@ -266,5 +268,11 @@ enum Serial2Protocol {
     SERIAL2_FRSKY_DPORT = 2,
     SERIAL2_FRSKY_SPORT = 3 // not supported yet
 };
+
+
+template <typename T, unsigned S>
+inline unsigned arraySize (const T (&v)[S]) {
+	return S;
+}
 
 #endif // _DEFINES_H

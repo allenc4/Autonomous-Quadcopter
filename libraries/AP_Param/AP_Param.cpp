@@ -663,6 +663,8 @@ bool AP_Param::save(bool force_save)
         return false;
     }
 
+    hal.console->printf("Param save: passed info\n");
+
     struct Param_header phdr;
 
     // create the header we will use to store the variable
@@ -740,6 +742,7 @@ bool AP_Param::load(void)
         return false;
     }
 
+    hal.console->printf("param load: info not null\n");
     struct Param_header phdr;
 
     // create the header we will use to match the variable

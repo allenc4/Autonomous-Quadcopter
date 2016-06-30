@@ -1,4 +1,8 @@
+#include <AP_HAL.h>
+#include <AP_HAL_AVR.h>
+
 #include "Config.h"
+#include "INS_UserInteract.h"
 
 /**
  * Various setup fragments to initialize the board and get ready for flight.
@@ -31,9 +35,16 @@ void Init_Arducopter() {
 	// Initialize MPU6050's internal sensor fusion (aka DigitalMotionProcessing)
 	hal.scheduler->suspend_timer_procs();  // stop bus collisions
 	ins.dmp_init();
-	ins.push_gyro_offsets_to_dmp();
-	hal.scheduler->resume_timer_procs();
 
+	// Set accelerometer offsets and scale
+//	Vector3<float> accel_offsets(ACCEL_X_OFFSET, ACCEL_Y_OFFSET, ACCEL_Z_OFFSET);
+//	Vector3<float> accel_scaling(ACCEL_X_SCALE, ACCEL_Y_SCALE, ACCEL_Z_SCALE);
+//	ins.set_accel_offsets(accel_offsets);
+//	ins.set_accel_scale(accel_scaling);
+
+	ins.push_gyro_offsets_to_dmp();
+//	ins.push_accel_offsets_to_dmp();
+	hal.scheduler->resume_timer_procs();
 }
 
 /**
@@ -48,4 +59,47 @@ void Setup_Motors() {
 	// Enable output to the motors
 	hal.rcout->set_freq(0xF, RC_FAST_SPEED);  // Send 490Hz pulse to negate ESC averaging filter effect
 	hal.rcout->enable_mask(0xFF);
+}
+
+/**
+ * Calibrate the accelerometer. This MUST be done on the ground with USB serial connected.
+ */
+void accel_calibration() {
+
+	bool calibrate = false;
+
+	if (ins.calibrated()) {
+		hal.console->printf("Accelerometer has been calibrated already. Calibrate again (Y/N)?\n");
+
+		while (hal.console->available() <= 0) {
+			hal.scheduler->delay(20);
+		}
+
+		if (hal.console->read() == 'Y') {
+			calibrate = true;
+		}
+	} else {
+		calibrate = true;
+	}
+
+	if (calibrate) {
+		hal.console->printf("Ensure the quadcopter is on a level surface and not moving. Press any key to continue\n");
+
+		// Wait until the user is ready to calibrate
+		while (hal.console->available() <= 0) {
+			hal.scheduler->delay(20);
+		}
+
+		// Call the Ardupilot library function to calibrate the accelerometer, get offsets and scaling,
+		// and pitch/roll trim values
+		AP_InertialSensor_UserInteract *console = new INS_UserInteract;
+		ins.calibrate_accel(NULL, console, trim_pitch, trim_roll);
+
+		hal.console->printf("Pitch trim: %4.2f\t Roll trim: %4.2f",
+				trim_pitch, trim_roll);
+		while (hal.console->available() <= 0) {
+			hal.scheduler->delay(20);
+		}
+	}
+
 }

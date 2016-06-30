@@ -8,6 +8,8 @@
 #ifndef MOTOR_H_
 #define MOTOR_H_
 
+#include <AP_Math.h>
+
 #include "Config.h"
 
 class Motors {
@@ -19,6 +21,7 @@ public:
 	void output_Zero();
 	void calibrate_ESCs();
 	void init_yaw();
+	void output_Throttle();
 
 
 //	void calibrate_ESC();
