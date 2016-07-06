@@ -15,8 +15,9 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG_ENABLED	DISABLED
+#define DEBUG_ENABLED	ENABLED
 #define ESC_CALIBRATE	DISABLED
+#define LIDAR_ENABLED	DISABLED
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -119,6 +120,16 @@
 #define PID_YAW_RATE 	4
 #define PID_YAW_STAB 	5
 
+//////////////////////////////////////////////////////////////////////////////
+// I2C / Lidar
+#define LIDAR_ADDRESS				0x62	// I2C address of the LIDAR
+#define REGISTER_MEASURE 			0x00 	// Register to write to initiate ranging
+#define MEASURE_VALUE				0x04	// Value to initiate ranging
+#define REGISTER_HIGH_LOW_BYTES		0x8f	// Register to get both High and Low bytes
+#define LIDAR_READ_TIMEOUT_MS		1000	// Time (in milliseconds) to wait for new LIDAR data before
+											// triggering a watchdog timeout
+#define LIDAR_READ_TIMOUT_ATTEMPTS	10		// Only allow 10 attempts of consecutive read fails before throwing error
+
 //#define ROLL_PITCH_INPUT_MAX      4500            // roll, pitch input range (45 degrees)
 //#define DEFAULT_ANGLE_MAX         4500            // Maximum lean angle (45 degrees)
 //#define ANGLE_RATE_MAX            18000           // default maximum rotation rate in roll/pitch axis requested by angle controller used in stabilize, loiter, rtl, auto flight modes
@@ -147,39 +158,39 @@
 //////////////////////////////////////////////////////////////////////////////
 // Throttle control gains
 //
-#define THROTTLE_CRUISE       450             // default estimate of throttle required for vehicle to maintain a hover
-
-#define THR_MID_DEFAULT       500             // Throttle output (0 ~ 1000) when throttle stick is in mid position
-
-#define THR_MIN_DEFAULT       130             // minimum throttle sent to the motors when armed and pilot throttle above zero
-#define THR_MAX_DEFAULT       1000            // maximum throttle sent to the motors
-
-#define THR_DZ_DEFAULT         100             // the deadzone above and below mid throttle while in althold or loiter
-
-#define ALT_HOLD_P            1.0f
-
-// RATE control
-#define THROTTLE_RATE_P       5.0f
-
-// Throttle Accel control
-#define THROTTLE_ACCEL_P      0.50f
-#define THROTTLE_ACCEL_I      1.00f
-#define THROTTLE_ACCEL_D      0.0f
-#define THROTTLE_ACCEL_IMAX   800
-
-//////////////////////////////////////////////////////////////////////////////
-// Throttle Failsafe
+//#define THROTTLE_CRUISE       450             // default estimate of throttle required for vehicle to maintain a hover
 //
-#define FS_THR_VALUE_DEFAULT             975
-
-/*
-  build a firmware version string.
-  GIT_VERSION comes from Makefile builds
-*/
-#ifndef GIT_VERSION
-#define FIRMWARE_STRING THISFIRMWARE
-#else
-#define FIRMWARE_STRING THISFIRMWARE " (" GIT_VERSION ")"
-#endif
+//#define THR_MID_DEFAULT       500             // Throttle output (0 ~ 1000) when throttle stick is in mid position
+//
+//#define THR_MIN_DEFAULT       130             // minimum throttle sent to the motors when armed and pilot throttle above zero
+//#define THR_MAX_DEFAULT       1000            // maximum throttle sent to the motors
+//
+//#define THR_DZ_DEFAULT         100             // the deadzone above and below mid throttle while in althold or loiter
+//
+//#define ALT_HOLD_P            1.0f
+//
+//// RATE control
+//#define THROTTLE_RATE_P       5.0f
+//
+//// Throttle Accel control
+//#define THROTTLE_ACCEL_P      0.50f
+//#define THROTTLE_ACCEL_I      1.00f
+//#define THROTTLE_ACCEL_D      0.0f
+//#define THROTTLE_ACCEL_IMAX   800
+//
+////////////////////////////////////////////////////////////////////////////////
+//// Throttle Failsafe
+////
+//#define FS_THR_VALUE_DEFAULT             975
+//
+///*
+//  build a firmware version string.
+//  GIT_VERSION comes from Makefile builds
+//*/
+//#ifndef GIT_VERSION
+//#define FIRMWARE_STRING THISFIRMWARE
+//#else
+//#define FIRMWARE_STRING THISFIRMWARE " (" GIT_VERSION ")"
+//#endif
 
 #endif // __ARDUCOPTER_CONFIG_H__
