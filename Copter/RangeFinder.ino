@@ -2,6 +2,8 @@
 
 RangeFinder::RangeFinder() {
 	numReadFails = 0;
+	distCM = 0;
+	timeLastUpdate = 0;
 }
 
 /**
@@ -10,6 +12,12 @@ RangeFinder::RangeFinder() {
  * LIDAR is NOT ready to use. If everything is connected and working OK, returns true.
  */
 bool RangeFinder::init() {
+
+	///////////////////////////////////////////////////////////////////
+	// FOR TESTING OF OPTICAL FLOW SENSOR ONLY
+	///////////////////////////////////////////////////////////////////
+//	return true;
+
 	hal.i2c->setTimeout(50);
 
 	// Get pointer to i2c bus semaphore
@@ -38,20 +46,30 @@ bool RangeFinder::init() {
  * function returns false, meaning we are not receiving any data.
  */
 bool RangeFinder::isHealthy() {
-	if (hal.scheduler->millis() - timeLastUpdate <= LIDAR_READ_TIMEOUT_MS ||
-			numReadFails > LIDAR_READ_TIMOUT_ATTEMPTS) {
-		return true;
-	} else {
+	///////////////////////////////////////////////////////////////////
+	// FOR TESTING OF OPTICAL FLOW SENSOR ONLY
+	///////////////////////////////////////////////////////////////////
+//	return true;
+
+	if (hal.scheduler->millis() - timeLastUpdate >= LIDAR_READ_TIMEOUT_MS ||
+			numReadFails >= LIDAR_READ_TIMOUT_ATTEMPTS) {
 		return false;
+	} else {
+		return true;
 	}
 }
 
 /**
  * Gets the last read distance (in centimeters) if there is a successful read.
- * Updates the passed uint16_t variable if the read was successful and returns true.
- * Otherwise, returns false
+ * If the read was successful, returns true; otherwise, returns false
  */
-bool RangeFinder::getDistance(uint16_t &distance) {
+bool RangeFinder::update() {
+	///////////////////////////////////////////////////////////////////
+	// FOR TESTING OF OPTICAL FLOW SENSOR ONLY
+	///////////////////////////////////////////////////////////////////
+//	distCM = 0;
+//	return true;
+
 	timeLastUpdate = hal.scheduler->millis();
 
 	// Start by getting the i2c bus semaphore
@@ -59,18 +77,20 @@ bool RangeFinder::getDistance(uint16_t &distance) {
 
 	// If we can't get the semaphore, exit immediately
 	if (!i2c_sem->take(1)) {
+		hal.console->printf("Couldn't get semaphore for I2C\n");
 		numReadFails++;
 		return false;
 	}
 
 	// Send command to lidar to take reading
 	if (hal.i2c->writeRegister(LIDAR_ADDRESS, REGISTER_MEASURE, MEASURE_VALUE) != 0) {
+		hal.console->printf("Error writing to LIDAR register\n");
 		numReadFails++;
 		i2c_sem->give();
 		return false;
 	}
 
-	hal.scheduler->delay(1);
+	hal.scheduler->delay(10);
 
 
 	uint8_t buf[2];
@@ -78,13 +98,14 @@ bool RangeFinder::getDistance(uint16_t &distance) {
 	// Read the high and low byte distance registers
 	if (hal.i2c->readRegisters(LIDAR_ADDRESS, REGISTER_HIGH_LOW_BYTES, 2, &buf[0]) != 0) {
 		// Problem reading
+		hal.console->printf("Error reading from LIDAR\n");
 		numReadFails++;
 		i2c_sem->give();
 		return false;
 	}
 
 	// Combine results into a cm distance
-	distance = ((uint16_t)buf[0] << 8 | buf[1]);
+	distCM = ((uint16_t)buf[0] << 8 | buf[1]);
 
 	i2c_sem->give();
 	numReadFails = 0;  // Reset numReadFails since we only count consecutive failures
@@ -93,4 +114,24 @@ bool RangeFinder::getDistance(uint16_t &distance) {
 	hal.scheduler->delay_microseconds(100);
 
 	return true;
+}
+
+/**
+ * Gets the last read distance (in centimeters) if there is a successful read.
+ * If the read was successful, returns true and updates the passed parameter
+ * with the distance in centimeters; otherwise, returns false
+ */
+bool RangeFinder::update(uint16_t &distance) {
+	bool stat = update();
+	if (stat) {
+		distance = distCM;
+	}
+	return stat;
+}
+
+/**
+ * Gets the last known value read from the LIDAR
+ */
+uint16_t RangeFinder::getLastDistance() {
+	return distCM;
 }

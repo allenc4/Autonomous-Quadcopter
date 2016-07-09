@@ -15,9 +15,18 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG_ENABLED	ENABLED
+#define DEBUG			ENABLED
 #define ESC_CALIBRATE	DISABLED
-#define LIDAR_ENABLED	DISABLED
+
+// Enable lIDAR Lite range finder
+#define LIDAR			DISABLED
+
+// Optical Flow sensor
+#define OPTFLOW					DISABLED
+#define OPTFLOW_ORIENTATION 	AP_OPTICALFLOW_ADNS3080_PINS_FORWARD
+#define OPTFLOW_RESOLUTION		ADNS3080_RESOLUTION_1600
+#define OPTFLOW_FOV				AP_OPTICALFLOW_ADNS3080_08_FOV
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -75,7 +84,7 @@
 #define INS_PITCH_OFFSET	1.082921172521
 //#define INS_YAW_OFFSET		-0.9585314622399
 
-// Accelerometer offset in radians
+// Accelerometer offset in degrees
 #define ACCEL_X_OFFSET		-0.9  // Roll
 #define ACCEL_Y_OFFSET		2.645 // Pitch
 #define ACCEL_Z_OFFSET		0 	  // Yaw
@@ -113,12 +122,32 @@
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
-#define PID_PITCH_RATE 	0
-#define PID_ROLL_RATE 	1
-#define PID_PITCH_STAB 	2
-#define PID_ROLL_STAB 	3
-#define PID_YAW_RATE 	4
-#define PID_YAW_STAB 	5
+#define PID_PITCH_RATE 			0
+#define 	PITCH_RATE_P		0.7f
+#define		PITCH_RATE_I		1
+#define		PITCH_RATE_D		0
+#define		PITCH_RATE_I_MAX	50
+
+#define PID_ROLL_RATE 			1
+#define		ROLL_RATE_P			0.7f
+#define		ROLL_RATE_I			1
+#define		ROLL_RATE_D			0
+#define 	ROLL_RATE_I_MAX		100
+
+#define PID_YAW_RATE 			2
+#define		YAW_RATE_P			0.2f
+#define		YAW_RATE_I			1
+#define		YAW_RATE_D			0
+#define		YAW_RATE_I_MAX		50
+
+// Only P values needed for stability
+#define PID_PITCH_STAB 			3
+#define		PITCH_STAB_P		4.5f
+#define PID_ROLL_STAB 			4
+#define 	ROLL_STAB_P			4.5f
+#define PID_YAW_STAB 			5
+#define 	YAW_STAB_P			10
+
 
 //////////////////////////////////////////////////////////////////////////////
 // I2C / Lidar
@@ -129,6 +158,20 @@
 #define LIDAR_READ_TIMEOUT_MS		1000	// Time (in milliseconds) to wait for new LIDAR data before
 											// triggering a watchdog timeout
 #define LIDAR_READ_TIMOUT_ATTEMPTS	10		// Only allow 10 attempts of consecutive read fails before throwing error
+
+
+// Optical Flow PIDs
+#define PID_OPTFLOW_PITCH		0
+#define     OPTFLOW_PITCH_P		2.5f
+#define     OPTFLOW_PITCH_I		0.5f
+#define     OPTFLOW_PITCH_D		0.12f
+#define PID_OPTFLOW_ROLL		1
+#define		OPTFLOW_ROLL_P		2.5f
+#define		OPTFLOW_ROLL_I		0.5f
+#define		OPTFLOW_ROLL_D		0.12f
+#define OPTFLOW_I_MAX			1
+
+
 
 //#define ROLL_PITCH_INPUT_MAX      4500            // roll, pitch input range (45 degrees)
 //#define DEFAULT_ANGLE_MAX         4500            // Maximum lean angle (45 degrees)

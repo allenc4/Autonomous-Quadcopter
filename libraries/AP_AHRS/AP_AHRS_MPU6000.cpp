@@ -44,6 +44,7 @@ AP_AHRS_MPU6000::init()
     push_gains_to_dmp();
     _mpu6000->push_gyro_offsets_to_dmp();
 
+
     // restart timer
     hal.scheduler->resume_timer_procs();
 };

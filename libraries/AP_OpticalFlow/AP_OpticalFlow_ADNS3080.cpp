@@ -110,15 +110,24 @@ finish:
 // Read a register from the sensor
 uint8_t AP_OpticalFlow_ADNS3080::read_register(uint8_t address)
 {
-    if (_spi == NULL) return 0;
 
-    if (!_spi_sem->take_nonblocking()) {
+//	AP_HAL::Semaphore *spi_sem;
+
+    if (_spi == NULL) {
+    	return 0;
+    }
+
+    _spi_sem = _spi->get_semaphore();
+
+    if (_spi_sem != NULL && !_spi_sem->take_nonblocking()) {
         return 0;
     }
 
     _spi->cs_assert();
+
     // send the device the register you want to read:
     _spi->transfer(address);
+
     hal.scheduler->delay_microseconds(50);
     // send a value of 0 to read the first byte returned:
     uint8_t result = _spi->transfer(0x00);
@@ -135,7 +144,9 @@ void AP_OpticalFlow_ADNS3080::write_register(uint8_t address, uint8_t value)
 {
     if (_spi == NULL) return;
 
-    if (!_spi_sem->take_nonblocking()) {
+    _spi_sem = _spi->get_semaphore();
+
+    if (_spi_sem != NULL && !_spi_sem->take_nonblocking()) {
         return;
     }
 
