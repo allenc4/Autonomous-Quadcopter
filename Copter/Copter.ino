@@ -26,6 +26,7 @@
 // Local includes
 #include "Config.h"
 #include "Motors.h"
+#include "RangeFinder.h"
 
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
@@ -41,9 +42,17 @@ long rc_channels[8];
 
 // Set up Motors instance to control all motors
 Motors motors;
-
 PID pids[6];
 
+// Lidar setup
+RangeFinder lidar;
+
+// LEDs
+AP_HAL::DigitalSource *a_led;
+AP_HAL::DigitalSource *b_led;
+AP_HAL::DigitalSource *c_led;
+
+// For debugging and printing to console
 uint16_t loop_count;
 
 void setup()
@@ -77,9 +86,21 @@ void setup()
 		motors.calibrate_ESCs();
 	}
 
-	Init_Arducopter();
-	// Add offsets to roll and pitch
+	if (!Init_Arducopter()) {
+		// Something went wrong in the initial setup, so we dont want to continue.
+		// Flash red light letting user know an error occurred
+		a_led->write(0);
+		b_led->write(1);
+		c_led->write(1);
+		hal.scheduler->delay(1000);
 
+		while (true) {
+			a_led->write(1);
+			hal.scheduler->delay(1000);
+			a_led->write(0);
+			hal.scheduler->delay(1000);
+		}
+	}
 
 	// Wait until roll, pitch, and yaw values are stable before we initialize the motors
 	// (multirotor is not moving and gyro sensor data is initialized)
@@ -201,11 +222,13 @@ void loop()
 	// Test and display accelerometer/gyro values
 //	accel_Gyro_Test();
 
+	// Test and display LIDAR values
+//	lidarTest();
+
 	// Output throttle response to motors
 	 motors.output();
 
-	// Directly output throttle from receiver (TESTING ONLY!!!!!
-//	motors.output_Throttle();
+
 
 }
 

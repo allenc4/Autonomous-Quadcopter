@@ -128,10 +128,10 @@ void Motors::output() {
 //		long roll_output  =   pids[PID_ROLL_RATE].get_pid(rc_channels[RC_CHANNEL_ROLL] - gyro_roll, 1);
 //		long yaw_output   =   pids[PID_YAW_RATE].get_pid(rc_channels[RC_CHANNEL_YAW] - gyro_yaw, 1);
 
-		output(MOTOR_FL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output - yaw_output);
-		output(MOTOR_BL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output + yaw_output);
-		output(MOTOR_FR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output + yaw_output);
-		output(MOTOR_BR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output - yaw_output);
+//		output(MOTOR_FL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output - yaw_output);
+//		output(MOTOR_BL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output + yaw_output);
+//		output(MOTOR_FR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output + yaw_output);
+//		output(MOTOR_BR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output - yaw_output);
 
 		// Print out the sensor yaw/pitch/roll data in degrees
 		if (DEBUG_ENABLED)

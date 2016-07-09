@@ -7,7 +7,7 @@
 /**
  * Various setup fragments to initialize the board and get ready for flight.
  */
-void Init_Arducopter() {
+bool Init_Arducopter() {
 
 	// we don't want writes to the serial port to cause us to pause
 	// mid-flight, so set the serial ports non-blocking once we are
@@ -18,6 +18,23 @@ void Init_Arducopter() {
 		hal.uartB->set_blocking_writes(false);
 		hal.uartC->set_blocking_writes(false);
 	}
+
+	// Initialize LEDs
+	 hal.gpio->pinMode(13, GPIO_OUTPUT);
+	hal.gpio->write(13, 0);
+
+    a_led = hal.gpio->channel(27);
+	b_led = hal.gpio->channel(26);
+    c_led = hal.gpio->channel(25);
+
+    a_led->mode(GPIO_OUTPUT);
+	b_led->mode(GPIO_OUTPUT);
+    c_led->mode(GPIO_OUTPUT);
+
+    // Turn A and C lights off during setup, but leave B on.
+    a_led->write(1);
+	b_led->write(0);
+    c_led->write(1);
 
 	/*
 	 * Get the accelerometer, magnetometer, and gyroscope sensors ready
@@ -44,7 +61,17 @@ void Init_Arducopter() {
 
 	ins.push_gyro_offsets_to_dmp();
 //	ins.push_accel_offsets_to_dmp();
+
+	// Initialize LIDAR and ensure it is connected at startup
+	if (LIDAR_ENABLED == ENABLED && !lidar.init()) {
+		hal.console->println("LIDAR not initialized. Must correct issue before flight");
+		return false;
+	}
+
+	hal.scheduler->delay(50);
 	hal.scheduler->resume_timer_procs();
+
+	return true;
 }
 
 /**
