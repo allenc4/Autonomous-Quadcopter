@@ -105,38 +105,10 @@ AP_HAL::DigitalSource *c_led;
 uint16_t loop_count;
 
 // System Timers
-// Time in microseconds of main control loop
-static uint32_t fast_loopTimer;
-// Counters for branching from 10 hz control loop
-static uint8_t medium_loopCounter;
-// Counters for branching from 3.3 hz control loop
-static uint8_t slow_loopCounter;
-// Counter of main loop executions.  Used for performance monitoring and failsafe processing
-static uint16_t mainLoop_count;
-// the time when the last HEARTBEAT message arrived from a GCS - used for triggering gcs failsafe
-//static uint32_t last_heartbeat_ms;
-
-
-// main loop scheduler
-static AP_Scheduler scheduler;
-
-/*
-  scheduler table - all regular tasks apart from the fast_loop()
-  should be listed here, along with how often they should be called
-  (in 10ms units) and the maximum time they are expected to take (in
-  microseconds)
- */
-static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
-//    { update_GPS,            2,     900 },
-	{ medium_loop,         2,     500 },
-	{ slow_loop,			10,     500 }
-//    { fifty_hz_loop,         2,     950 },
-//    { slow_loop,            10,     500 },
-//    { gcs_send_heartbeat,  100,     700 },
-//    { compass_accumulate,    2,     700 },
-//    { super_slow_loop,     100,    1100 },
-//    { perf_update,        1000,     500 }
-};
+uint32_t mediumLoopExecute = 500;		//timer for how often medium loop should be executed
+uint32_t mediumLoopLastExecute = 0;		//last time we executed the medium loop
+uint32_t slowLoopExecute = 1000;		//timer for how often slow loop should be executed
+uint32_t slowLoopLastExecute = 0;		//last time we executed the slow loop
 
 void setup()
 {
@@ -247,40 +219,29 @@ void setup()
 
 	Setup_Motors();
 
-	// Initialize the main loop scheduler
-	scheduler.init(&scheduler_tasks[0], sizeof(scheduler_tasks)/sizeof(scheduler_tasks[0]));
 }
 
 void loop()
 {
-	// Since we use the AP_Scheduler class to queue function calls,
-	// we need to keep track of processing time for the loops
-	uint32_t timer = hal.scheduler->micros();
+	uint32_t currentMillis = hal.scheduler->millis();
+	
+	ins.wait_for_sample();
 
-	// We want this to execute fast
-	// ----------------------------
-	if (ins.num_samples_available() >= 2) {
+	// Execute the fast loop
+	// ---------------------
+	fast_loop();
 
-		// check loop time
-		fast_loopTimer = timer;
-
-		// for mainloop failure monitoring
-		mainLoop_count++;
-
-		// Execute the fast loop
-		// ---------------------
-		fast_loop();
-
-		// tell the scheduler one tick has passed
-		scheduler.tick();
-	} else {
-		uint16_t deltaTime = timer - fast_loopTimer;
-		if (deltaTime < 10000) {
-			uint16_t time_to_next_loop = 10000 - deltaTime;
-			scheduler.run(time_to_next_loop);
-		}
+	if(currentMillis - mediumLoopLastExecute >= mediumLoopExecute)
+	{
+		mediumLoopLastExecute = currentMillis;
+		medium_loop();
 	}
 
+	if(currentMillis - slowLoopLastExecute >= slowLoopExecute)
+	{
+		slowLoopLastExecute = currentMillis;
+		slow_loop();
+	}
 	// Test each individual motor
 //	motor_Test();
 
