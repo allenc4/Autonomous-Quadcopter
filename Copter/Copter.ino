@@ -105,13 +105,18 @@ AP_HAL::DigitalSource *c_led;
 uint16_t loop_count;
 
 // System Timers
-uint32_t mediumLoopExecute = 500;		//timer for how often medium loop should be executed
-uint32_t mediumLoopLastExecute = 0;		//last time we executed the medium loop
-uint32_t slowLoopExecute = 1000;		//timer for how often slow loop should be executed
-uint32_t slowLoopLastExecute = 0;		//last time we executed the slow loop
+//timer for how often medium loop should be executed
+uint32_t mediumLoopExecute = 500;		
+//last time we executed the medium loop
+uint32_t mediumLoopLastExecute = 0;		
+//timer for how often slow loop should be executed
+uint32_t slowLoopExecute = 1000;		
+//last time we executed the slow loop
+uint32_t slowLoopLastExecute = 0;		
 
 void setup()
 {
+
 
 	// this needs to be the first call, as it fills memory with sentinel values
 	memcheck_init();
@@ -297,6 +302,7 @@ static void fast_loop() {
 }
 
 static void medium_loop() {
+	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED
