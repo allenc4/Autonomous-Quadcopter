@@ -128,7 +128,7 @@ static AP_Scheduler scheduler;
  */
 static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
 //    { update_GPS,            2,     900 },
-	{ medium_loop,         2,     500 },
+	{ medium_loop,           2,     700 },
 	{ slow_loop,			10,     500 }
 //    { fifty_hz_loop,         2,     950 },
 //    { slow_loop,            10,     500 },
@@ -138,8 +138,11 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
 //    { perf_update,        1000,     500 }
 };
 
+
+
 void setup()
 {
+
 
 	// this needs to be the first call, as it fills memory with sentinel values
 	memcheck_init();
@@ -259,7 +262,7 @@ void loop()
 
 	// We want this to execute fast
 	// ----------------------------
-	if (ins.num_samples_available() >= 2) {
+	if (ins.num_samples_available() > 2) {
 
 		// check loop time
 		fast_loopTimer = timer;
@@ -336,6 +339,7 @@ static void fast_loop() {
 }
 
 static void medium_loop() {
+	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED

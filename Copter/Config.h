@@ -19,10 +19,10 @@
 #define ESC_CALIBRATE	DISABLED
 
 // Enable lIDAR Lite range finder
-#define LIDAR			DISABLED
+#define LIDAR			ENABLED
 
 // Optical Flow sensor
-#define OPTFLOW					DISABLED
+#define OPTFLOW					ENABLED
 #define OPTFLOW_ORIENTATION 	AP_OPTICALFLOW_ADNS3080_PINS_FORWARD
 #define OPTFLOW_RESOLUTION		ADNS3080_RESOLUTION_1600
 #define OPTFLOW_FOV				AP_OPTICALFLOW_ADNS3080_08_FOV
@@ -80,13 +80,13 @@
 /////////////////////////////////////////////////////////////////////
 // Offsets for gyroscope and accelerometer
 // INS Gyroscope
-#define INS_ROLL_OFFSET 	-1.05  //0.00579265487498855
-#define INS_PITCH_OFFSET	1.082921172521
+#define INS_ROLL_OFFSET 	-1.65 // -1.05  //0.00579265487498855
+#define INS_PITCH_OFFSET	1.65// 1.082921172521
 //#define INS_YAW_OFFSET		-0.9585314622399
 
 // Accelerometer offset in degrees
-#define ACCEL_X_OFFSET		-0.9  // Roll
-#define ACCEL_Y_OFFSET		2.645 // Pitch
+#define ACCEL_X_OFFSET		-7.1 // -0.9  // Roll
+#define ACCEL_Y_OFFSET		7.3// 2.645 // Pitch
 #define ACCEL_Z_OFFSET		0 	  // Yaw
 //#define ACCEL_X_SCALE		1
 //#define ACCEL_Y_SCALE		1 //0.99

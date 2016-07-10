@@ -26,6 +26,9 @@ public:
 	// calculate modified roll/pitch depending upon optical flow calculated position
 	int32_t get_of_roll(int32_t input_roll, int32_t input_yaw);
 	int32_t get_of_pitch(int32_t input_pitch, int32_t input_yaw);
+
+	float get_change_x();
+	float get_change_y();
 private:
 	RangeFinder *rangeFinder;
 };

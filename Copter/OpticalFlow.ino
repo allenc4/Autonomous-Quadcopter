@@ -157,3 +157,11 @@ int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
 
     return input_pitch+of_pitch;
 }
+
+float OpticalFlow::get_change_x() {
+	return _optflow.change_x;
+}
+
+float OpticalFlow::get_change_y() {
+	return _optflow.change_y;
+}
