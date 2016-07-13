@@ -17,11 +17,13 @@ bool RangeFinder::init() {
 
 	// If we can't get the semaphore, exit immediately
 	if (!i2c_sem->take(1)) {
+		hal.console->println("Couldnt take sem");
 		return false;
 	}
 
 	// Send command to lidar to take reading
 	if (hal.i2c->writeRegister(LIDAR_ADDRESS, REGISTER_MEASURE, MEASURE_VALUE) != 0) {
+		hal.console->println("Couldnt Write Register");
 		i2c_sem->give();
 		return false;
 	}

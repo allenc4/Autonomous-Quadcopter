@@ -34,12 +34,12 @@
 		<link>
 			<name>core/core</name>
 			<type>2</type>
-			<location>/home/chris/Documents/eclipseArduino/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/cores/arduino</location>
+			<location>/home/tyler/eclipseArduino/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/cores/arduino</location>
 		</link>
 		<link>
 			<name>core/variant</name>
 			<type>2</type>
-			<location>/home/chris/Documents/eclipseArduino/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/variants/mega</location>
+			<location>/home/tyler/eclipseArduino/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/variants/mega</location>
 		</link>
 	</linkedResources>
 </projectDescription>

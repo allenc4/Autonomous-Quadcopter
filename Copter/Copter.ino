@@ -223,7 +223,7 @@ void loop()
 //	accel_Gyro_Test();
 
 	// Test and display LIDAR values
-//	lidarTest();
+	lidarTest();
 
 	// Output throttle response to motors
 	 motors.output();
