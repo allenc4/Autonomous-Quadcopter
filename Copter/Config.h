@@ -15,9 +15,19 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG_ENABLED	ENABLED
+#define DEBUG			ENABLED
 #define ESC_CALIBRATE	DISABLED
 #define LIDAR_ENABLED	ENABLED
+
+// Enable lIDAR Lite range finder
+#define LIDAR			ENABLED
+
+// Optical Flow sensor
+#define OPTFLOW					ENABLED
+#define OPTFLOW_ORIENTATION 	AP_OPTICALFLOW_ADNS3080_PINS_FORWARD
+#define OPTFLOW_RESOLUTION		ADNS3080_RESOLUTION_1600
+#define OPTFLOW_FOV				AP_OPTICALFLOW_ADNS3080_08_FOV
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -71,13 +81,13 @@
 /////////////////////////////////////////////////////////////////////
 // Offsets for gyroscope and accelerometer
 // INS Gyroscope
-#define INS_ROLL_OFFSET 	-1.05  //0.00579265487498855
-#define INS_PITCH_OFFSET	1.082921172521
+#define INS_ROLL_OFFSET 	-1.65 // -1.05  //0.00579265487498855
+#define INS_PITCH_OFFSET	1.65// 1.082921172521
 //#define INS_YAW_OFFSET		-0.9585314622399
 
-// Accelerometer offset in radians
-#define ACCEL_X_OFFSET		-0.9  // Roll
-#define ACCEL_Y_OFFSET		2.645 // Pitch
+// Accelerometer offset in degrees
+#define ACCEL_X_OFFSET		-7.1 // -0.9  // Roll
+#define ACCEL_Y_OFFSET		7.3// 2.645 // Pitch
 #define ACCEL_Z_OFFSET		0 	  // Yaw
 //#define ACCEL_X_SCALE		1
 //#define ACCEL_Y_SCALE		1 //0.99
@@ -113,12 +123,56 @@
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
-#define PID_PITCH_RATE 	0
-#define PID_ROLL_RATE 	1
-#define PID_PITCH_STAB 	2
-#define PID_ROLL_STAB 	3
-#define PID_YAW_RATE 	4
-#define PID_YAW_STAB 	5
+#define PID_PITCH_RATE 			0
+#define 	PITCH_RATE_P		0.7f
+#define		PITCH_RATE_I		1
+#define		PITCH_RATE_D		0
+#define		PITCH_RATE_I_MAX	50
+
+#define PID_ROLL_RATE 			1
+#define		ROLL_RATE_P			0.7f
+#define		ROLL_RATE_I			1
+#define		ROLL_RATE_D			0
+#define 	ROLL_RATE_I_MAX		100
+
+#define PID_YAW_RATE 			2
+#define		YAW_RATE_P			0.2f
+#define		YAW_RATE_I			1
+#define		YAW_RATE_D			0
+#define		YAW_RATE_I_MAX		50
+
+// Only P values needed for stability
+#define PID_PITCH_STAB 			3
+#define		PITCH_STAB_P		4.5f
+#define PID_ROLL_STAB 			4
+#define 	ROLL_STAB_P			4.5f
+#define PID_YAW_STAB 			5
+#define 	YAW_STAB_P			10
+
+
+//////////////////////////////////////////////////////////////////////////////
+// I2C / Lidar
+#define LIDAR_ADDRESS				0x62	// I2C address of the LIDAR
+#define REGISTER_MEASURE 			0x00 	// Register to write to initiate ranging
+#define MEASURE_VALUE				0x04	// Value to initiate ranging
+#define REGISTER_HIGH_LOW_BYTES		0x8f	// Register to get both High and Low bytes
+#define LIDAR_READ_TIMEOUT_MS		1000	// Time (in milliseconds) to wait for new LIDAR data before
+											// triggering a watchdog timeout
+#define LIDAR_READ_TIMOUT_ATTEMPTS	10		// Only allow 10 attempts of consecutive read fails before throwing error
+
+
+// Optical Flow PIDs
+#define PID_OPTFLOW_PITCH		0
+#define     OPTFLOW_PITCH_P		2.5f
+#define     OPTFLOW_PITCH_I		0.5f
+#define     OPTFLOW_PITCH_D		0.12f
+#define PID_OPTFLOW_ROLL		1
+#define		OPTFLOW_ROLL_P		2.5f
+#define		OPTFLOW_ROLL_I		0.5f
+#define		OPTFLOW_ROLL_D		0.12f
+#define OPTFLOW_I_MAX			1
+
+
 
 //////////////////////////////////////////////////////////////////////////////
 // I2C / Lidar

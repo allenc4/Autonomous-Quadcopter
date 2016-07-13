@@ -11,6 +11,7 @@
 #define TRUE					1
 #define FALSE					0
 #define EMPTY					0
+//#define NULL					0
 
 // this avoids a very common config error
 #define ENABLE ENABLED

@@ -57,8 +57,7 @@ void AltHold::holdAltitute(){
 	currentThrottle = this->_mapThrottle(currentThrottle, RC_THROTTLE_MIN, RC_THROTTLE_MAX, ALTHOLD_HEIGHT_MIN, ALTHOLD_HEIGHT_MAX);
 
 	int32_t currentState;
-	uint16_t currentDistance;
-	lidar.getDistance(currentDistance);
+	uint16_t currentDistance = lidar.getLastDistance();
 
 	//if we have no throttle input do nothing
 	if(currentThrottle < RC_THROTTLE_MIN - 75) //this is the current min_throttle_offset variable should be changed to a var not harcoded
@@ -121,8 +120,7 @@ void AltHold::holdAltitute(){
 //this should be called in the scheduler
 void AltHold::_updateAcceleration(){
 
-	uint16_t currentDistance;
-	lidar.getDistance(currentDistance);
+	uint16_t currentDistance = lidar.getLastDistance();
 
 	uint32_t currentTime = hal.scheduler->millis();
 	uint32_t timeDiff = currentTime - this->_lastAccelUpdateTime;

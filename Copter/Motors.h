@@ -11,6 +11,7 @@
 #include <AP_Math.h>
 
 #include "Config.h"
+#include "OpticalFlow.h"
 
 class Motors {
 

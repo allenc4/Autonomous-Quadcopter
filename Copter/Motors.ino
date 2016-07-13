@@ -20,7 +20,7 @@ void Motors::output(uint16_t motor_num, uint16_t pwm) {
 		pwm = RC_THROTTLE_MAX;
 	}
 
-	if (DEBUG_ENABLED) {
+	if (DEBUG) {
 //		hal.console->printf("PWM: %d\r\n", pwm);
 	}
 
@@ -34,18 +34,13 @@ void Motors::output(uint16_t motor_num, uint16_t pwm) {
 void Motors::output() {
 
 	// Get yaw/pitch/roll data from MPU6050 sensor and convert to degrees
-	ins.update();
-	float sensor_roll,sensor_pitch,sensor_yaw;
+	float sensor_roll, sensor_pitch, sensor_yaw;
 	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
-	sensor_roll = ToDeg(sensor_roll) + ACCEL_X_OFFSET;
-//	// Fix roll data because APM is upside down :)
-//	if (sensor_roll < 0) {
-//		sensor_roll += INS_ROLL_OFFSET;
-//	} else {
-//		sensor_roll -= INS_ROLL_OFFSET;
-//	}
+
+	// Add offsets to roll and pitch
+	sensor_roll  = ToDeg(sensor_roll)  + ACCEL_X_OFFSET;
 	sensor_pitch = ToDeg(sensor_pitch) + ACCEL_Y_OFFSET;
-	sensor_yaw = ToDeg(sensor_yaw);
+	sensor_yaw   = ToDeg(sensor_yaw);
 
 //	Vector3f accel = ins.get_accel();
 //	float sensor_pitch = atan(accel.x / sqrt(pow(accel.y,2) + pow(accel.z,2)));
@@ -64,8 +59,29 @@ void Motors::output() {
 	// Get rotational velocity data for each axis from the gyro and convert from rad/sec to deg
 	Vector3f gyro = ins.get_gyro();
 	double gyro_pitch = ToDeg(gyro.y) + INS_PITCH_OFFSET;
-	double gyro_roll = ToDeg(gyro.x) + INS_ROLL_OFFSET;
-	double gyro_yaw = ToDeg(gyro.z);
+	double gyro_roll  = ToDeg(gyro.x) + INS_ROLL_OFFSET;
+	double gyro_yaw   = ToDeg(gyro.z);
+
+	// Correct roll and pitch for drift using optical flow sensor
+#if OPTFLOW == ENABLED && LIDAR == ENABLED
+	rc_channels[RC_CHANNEL_ROLL]  = opticalFlow.get_of_roll(
+			rc_channels[RC_CHANNEL_ROLL],
+			rc_channels[RC_CHANNEL_YAW]);
+	rc_channels[RC_CHANNEL_PITCH] = opticalFlow.get_of_pitch(
+			rc_channels[RC_CHANNEL_PITCH],
+			rc_channels[RC_CHANNEL_YAW]);
+
+	if (DEBUG == ENABLED) {
+		if (loop_count == 10) {
+			loop_count = 0;
+			hal.console->printf("Change in x: %2.1f \t y: %2.1f\n",
+					opticalFlow.get_change_x(),
+					opticalFlow.get_change_y());
+		} else {
+			loop_count++;
+		}
+	}
+#endif
 
 	// Perform stabilization only if throttle is above minimum level
 	if (rc_channels[RC_CHANNEL_THROTTLE] > RC_THROTTLE_MIN + min_throttle_offset) {
@@ -134,11 +150,11 @@ void Motors::output() {
 //		output(MOTOR_BR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output - yaw_output);
 
 		// Print out the sensor yaw/pitch/roll data in degrees
-		if (DEBUG_ENABLED)
-		{
-			if (loop_count == 20)
-			{
-				loop_count = 0;
+//		if (DEBUG == ENABLED)
+//		{
+//			if (loop_count == 20)
+//			{
+//				loop_count = 0;
 
 //				hal.console->printf("rc_channel_pitch: %4.1f\t accel_pitch: %4.1f\t stab_out_pitch: %4.1f\t gyro_pitch: %4.1f\t pitch_output: %li\n",
 //				(float)rc_channels[RC_CHANNEL_PITCH],
@@ -148,47 +164,31 @@ void Motors::output() {
 //				pitch_output);
 
 
-				hal.console->printf("Motor PWMs....FL: %li\t BL: %li\t FR: %li\t BR: %li\t\t",
-						rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output, // - yaw_output,
-						rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output, // + yaw_output,
-						rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output, // + yaw_output,
-						rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output); // - yaw_output);
+//				hal.console->printf("Motor PWMs....FL: %li\t BL: %li\t FR: %li\t BR: %li\t\t",
+//						rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output, // - yaw_output,
+//						rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output, // + yaw_output,
+//						rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output, // + yaw_output,
+//						rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output); // - yaw_output);
 //
 //				hal.console->printf("RC throt: %li\t RC pit: %li\t RC roll: %li\t RC yaw: %li\t\t",
 //						rc_channels[RC_CHANNEL_THROTTLE],
 //						rc_channels[RC_CHANNEL_PITCH],
 //						rc_channels[RC_CHANNEL_ROLL],
 //						rc_channels[RC_CHANNEL_YAW]);
-				hal.console->printf("Accel_Pitch: %4.1f\t Accel_Roll: %4.1f\t Accel_Yaw: %4.1f\t",
-						sensor_pitch, sensor_roll, sensor_yaw);
-				hal.console->printf("Gyro pitch: %4.1f\t Gyro roll: %4.1f\t Gyro yaw: %4.1f\t\t",
-						gyro_pitch, gyro_roll, gyro_yaw);
-				hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\n",
-						pitch_output, roll_output, yaw_output);
-
-
-							// Print expected motor outputs compared to real values
-//							uint16_t motor_readings[8];
-//							hal.rcout->read(motor_readings, 8);
-//
-//							hal.console->printf("Motor PWMs (expected vs (actual))...FL: %li (%li)\t BL: %li (%li)\t"
-//									"FR: %li (%li)\t BR: %li (%li)\n",
-//									(long) (rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output), // - yaw_output,
-//									(long) motor_readings[MOTOR_FL],
-//									(long) (rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output), // + yaw_output,
-//									(long) motor_readings[MOTOR_BL],
-//									(long) (rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output), // + yaw_output,
-//									(long) motor_readings[MOTOR_FR],
-//									(long) (rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output), // - yaw_output);
-//									(long) motor_readings[MOTOR_BR]);
+//				hal.console->printf("Accel_Pitch: %4.1f\t Accel_Roll: %4.1f\t Accel_Yaw: %4.1f\t",
+//						sensor_pitch, sensor_roll, sensor_yaw);
+//				hal.console->printf("Gyro pitch: %4.1f\t Gyro roll: %4.1f\t Gyro yaw: %4.1f\t\t",
+//						gyro_pitch, gyro_roll, gyro_yaw);
+//				hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\n",
+//						pitch_output, roll_output, yaw_output);
 
 
 
-			} else
-			{
-				loop_count++;
-			}
-		} // End if - DEBUG_ENABLED
+//			} else
+//			{
+//				loop_count++;
+//			}
+//		} // End if - DEBUG_ENABLED
 
 	} else {
 		// Otherwise, turn the motors off
@@ -219,7 +219,7 @@ void Motors::output_Zero() {
 }
 
 void Motors::output_Throttle() {
-	if (DEBUG_ENABLED) {
+	if (DEBUG) {
 		if (loop_count == 20) {
 			hal.console->print(rc_channels[RC_CHANNEL_THROTTLE]); //printf("Throttle value: \n", rc_channels[RC_CHANNEL_THROTTLE]);
 			hal.console->println();

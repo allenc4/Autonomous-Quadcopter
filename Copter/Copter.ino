@@ -17,22 +17,57 @@
 #include <GCS_MAVLink.h>
 #include <Filter.h>
 #include <AP_InertialSensor.h>
+#include <AP_AHRS.h>
+
+#include <AP_Baro.h>
+#include <AP_GPS.h>
+#include <AP_Airspeed.h>
+#include <AP_Declination.h>
+#include <AP_Compass.h>
+#include <AP_OpticalFlow.h>
 
 #include <AP_HAL.h>
 #include <AP_HAL_AVR.h>
 
+#include <AC_PID.h>
 #include <PID.h>
+
+#include <memcheck.h>           // memory limit checker
+#include <AP_Scheduler.h>       // main loop scheduler
+
 
 // Local includes
 #include "Config.h"
 #include "Motors.h"
+#include "OpticalFlow.h"
 #include "RangeFinder.h"
+
+// Function definitions
+static void fast_loop();
+static void medium_loop();
+static void slow_loop();
+static void update_trig();
+long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
 
 // MPU6050 accel/gyro chip
 AP_InertialSensor_MPU6000 ins;
+GPS *gps;  // Not formally used in this code. Only declared to create AHRS object
+AP_AHRS_MPU6000 ahrs(&ins, gps);
+
+// Orientation
+////////////////////////////////////////////////////////////////////////////////
+// Convenience accessors for commonly used trig functions. These values are generated
+// by the DCM through a few simple equations.
+// The cos values are defaulted to 1 to get a decent initial value for a level state
+float cos_roll_x         = 1.0;
+float cos_pitch_x        = 1.0;
+float cos_yaw            = 1.0;
+float sin_yaw;
+float sin_roll;
+float sin_pitch;
 
 // Roll and pitch trim values
 float trim_roll, trim_pitch;
@@ -40,12 +75,25 @@ float trim_roll, trim_pitch;
 // RC receiver channel values
 long rc_channels[8];
 
-// Set up Motors instance to control all motors
-Motors motors;
 PID pids[6];
 
-// Lidar setup
+// LIDAR Lite
+#if LIDAR == ENABLED
 RangeFinder lidar;
+
+// Lidar must be enabled (for altitude) to enable optical flow
+#if OPTFLOW == ENABLED
+OpticalFlow opticalFlow(&lidar);
+#endif
+#endif
+
+// Set up Motors instance to control all motors
+Motors motors;
+
+// The Commanded ROll based on optical flow sensor.
+int32_t of_roll;
+// The Commanded PITCH based on optical flow sensor. Negative pitch means go forward.
+int32_t of_pitch;
 
 // LEDs
 AP_HAL::DigitalSource *a_led;
@@ -55,30 +103,45 @@ AP_HAL::DigitalSource *c_led;
 // For debugging and printing to console
 uint16_t loop_count;
 
+// System Timers
+//timer for how often medium loop should be executed
+uint32_t mediumLoopExecute = 500;		
+//last time we executed the medium loop
+uint32_t mediumLoopLastExecute = 0;		
+//timer for how often slow loop should be executed
+uint32_t slowLoopExecute = 1000;		
+//last time we executed the slow loop
+uint32_t slowLoopLastExecute = 0;		
+
 void setup()
 {
+
+
+	// this needs to be the first call, as it fills memory with sentinel values
+	memcheck_init();
 
 	loop_count = 0;
 
 	// Initialize PID array
-	pids[PID_PITCH_RATE].kP(0.7);
-//	pids[PID_PITCH_RATE].kI(1);
-//	pids[PID_PITCH_RATE].kD(0.004);
-	pids[PID_PITCH_RATE].imax(50);
+	pids[PID_PITCH_RATE].kP(PITCH_RATE_P);
+//	pids[PID_PITCH_RATE].kI(PITCH_RATE_I);
+//	pids[PID_PITCH_RATE].kD(PITCH_RATE_D);
+	pids[PID_PITCH_RATE].imax(PITCH_RATE_I_MAX);
 
-	pids[PID_ROLL_RATE].kP(0.7);
-//	pids[PID_ROLL_RATE].kI();
-//	pids[PID_ROLL_RATE].kD(0.004);
-	pids[PID_ROLL_RATE].imax(100);
+	pids[PID_ROLL_RATE].kP(ROLL_RATE_P);
+//	pids[PID_ROLL_RATE].kI(ROLL_RATE_I);
+//	pids[PID_ROLL_RATE].kD(ROLL_RATE_D);
+	pids[PID_ROLL_RATE].imax(ROLL_RATE_I_MAX);
 
-	pids[PID_YAW_RATE].kP(0.200);
-//	pids[PID_YAW_RATE].kI(0.020);
-//	pids[PID_YAW_RATE].kD(0);
-	pids[PID_YAW_RATE].imax(50);
+	pids[PID_YAW_RATE].kP(YAW_RATE_P);
+//	pids[PID_YAW_RATE].kI(YAW_RATE_I);
+//	pids[PID_YAW_RATE].kD(YAW_RATE_D);
+	pids[PID_YAW_RATE].imax(YAW_RATE_I_MAX);
 
-	pids[PID_PITCH_STAB].kP(4.5);
-	pids[PID_ROLL_STAB].kP(4.5);
-	pids[PID_YAW_STAB].kP(10);
+	pids[PID_PITCH_STAB].kP(PITCH_STAB_P);
+	pids[PID_ROLL_STAB].kP(ROLL_STAB_P);
+	pids[PID_YAW_STAB].kP(YAW_STAB_P);
+
 
 	// If we are calibrating ESCs, do that now
 	if (ESC_CALIBRATE == ENABLED) {
@@ -159,28 +222,45 @@ void setup()
 //	accel_calibration();
 
 	Setup_Motors();
+
 }
 
 void loop()
 {
-//  uint16_t channels[8];  // array for raw channel values
-//
-//  // Read RC channels and store in channels array
-//  hal.rcin->read(channels, 8);
-//
-//  // Copy from channels array to something human readable - array entry 0 = input 1, etc.
-//  uint16_t rcthr, rcyaw, rcpit, rcroll;   // Variables to store rc input
-//  rcthr = channels[2];
-//  rcyaw = channels[3];
-//  rcpit = channels[1];
-//  rcroll = channels[0];
-//
-//  hal.console->printf_P(
-//            PSTR("individual read THR %d YAW %d PIT %d ROLL %d\r\n"),
-//            rcthr, rcyaw, rcpit, rcroll);
+	uint32_t currentMillis = hal.scheduler->millis();
+	
+	while(ins.num_samples_available() <= 0);
 
-	// Wait until new orientation data (normally 5ms max)
-	while (ins.num_samples_available() == 0);
+	// Execute the fast loop
+	// ---------------------
+	fast_loop();
+
+	if(currentMillis - mediumLoopLastExecute >= mediumLoopExecute)
+	{
+		mediumLoopLastExecute = currentMillis;
+		medium_loop();
+	}
+
+	if(currentMillis - slowLoopLastExecute >= slowLoopExecute)
+	{
+		slowLoopLastExecute = currentMillis;
+		slow_loop();
+	}
+	// Test each individual motor
+//	motor_Test();
+
+	// Test and display accelerometer/gyro values
+//	accel_Gyro_Test();
+
+}
+
+// Main loop - 100hz
+static void fast_loop() {
+    // IMU DCM Algorithm
+    ahrs.update();
+	ins.update();
+
+	update_trig();
 
 	// Get RC values
 	uint16_t channels[8];
@@ -211,28 +291,39 @@ void loop()
 	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
 
 	// DEBUGGING PURPOSES ONLY ///////////////////////////////
-//	rc_channels[RC_CHANNEL_THROTTLE] = RC_THROTTLE_MIN + 400;
-//	rc_channels[RC_CHANNEL_ROLL] = 0;
-//	rc_channels[RC_CHANNEL_PITCH] = 0;
-//	rc_channels[RC_CHANNEL_YAW] = 0;
-
-	// Test each individual motor
-//	motor_Test();
-
-	// Test and display accelerometer/gyro values
-//	accel_Gyro_Test();
+	//	rc_channels[RC_CHANNEL_THROTTLE] = RC_THROTTLE_MIN + 400;
+	//	rc_channels[RC_CHANNEL_ROLL] = 0;
+	//	rc_channels[RC_CHANNEL_PITCH] = 0;
+	//	rc_channels[RC_CHANNEL_YAW] = 0;
 
 	// Test and display LIDAR values
 	lidarTest();
 
 	// Output throttle response to motors
 	 motors.output();
+}
 
+static void medium_loop() {
+	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
 
+	// Update readings from LIDAR and Optical Flow sensors
+#if LIDAR == ENABLED
+	lidar.update();
+
+	// Test and display LIDAR values
+//	lidarTest();
+
+#if OPTFLOW == ENABLED
+	opticalFlow.update();
+#endif
+#endif
 
 }
 
-AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).
+static void slow_loop() {
+
+	// TODO - Check failsafes
+}
 
 /**
  *  Scales the x parameter and scales it so it is between a new min and max rangethat it represent something meaningful.
@@ -244,3 +335,35 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
+static void update_trig() {
+    Vector2f yawvector;
+    const Matrix3f &temp   = ahrs.get_dcm_matrix();
+
+    yawvector.x = temp.a.x; 	// sin
+    yawvector.y = temp.b.x;		// cos
+    yawvector.normalize();
+
+    cos_pitch_x = safe_sqrt(1 - (temp.c.x * temp.c.x));	 // level = 1
+    cos_roll_x  = temp.c.z / cos_pitch_x;				 // level = 1
+
+    cos_pitch_x = constrain_float(cos_pitch_x, 0, 1.0);
+    // this relies on constrain_float() of infinity doing the right thing,
+    // which it does do in avr-libc
+    cos_roll_x = constrain_float(cos_roll_x, -1.0, 1.0);
+
+    sin_yaw = constrain_float(yawvector.y, -1.0, 1.0);
+    cos_yaw = constrain_float(yawvector.x, -1.0, 1.0);
+
+    // added to convert earth frame to body frame for rate controllers
+    sin_pitch = -temp.c.x;
+    sin_roll  = temp.c.y / cos_pitch_x;
+
+    //flat:
+    // 0 ° = cos_yaw:  1.00, sin_yaw:  0.00,
+    // 90° = cos_yaw:  0.00, sin_yaw:  1.00,
+    // 180 = cos_yaw: -1.00, sin_yaw:  0.00,
+    // 270 = cos_yaw:  0.00, sin_yaw: -1.00,
+}
+
+AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).

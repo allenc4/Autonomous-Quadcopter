@@ -204,9 +204,8 @@ void individual_Motor_Test(int8_t motor_num)
 }
 
 void lidarTest() {
-
-	uint16_t lidarDistCm;
-	lidar.getDistance(lidarDistCm);
+#if LIDAR == ENABLED
+	uint16_t lidarDistCm = lidar.getLastDistance();
 
 	if (!lidar.isHealthy()) {
 		// Failsafe here...
@@ -214,16 +213,15 @@ void lidarTest() {
 		b_led->write(1);
 		c_led->write(1);
 
+		hal.console->println("LIDAR is not healthy.");
 	} else if (lidarDistCm <= 0) {
 		// Reading didn't take so disregard
 		return;
 	}
 
-	if (loop_count == 20) {
-		hal.console->printf("%d\n", lidarDistCm);
-		loop_count = 0;
-	}
-	loop_count++;
+	hal.console->printf("%d\n", lidarDistCm);
+
+#endif
 
 
 //	hal.scheduler->m

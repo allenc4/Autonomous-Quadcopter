@@ -13,14 +13,14 @@ bool Init_Arducopter() {
 	// mid-flight, so set the serial ports non-blocking once we are
 	// ready to fly
 
-	if (!DEBUG_ENABLED) {
+	if (DEBUG != ENABLED) {
 		hal.uartA->set_blocking_writes(false);
 		hal.uartB->set_blocking_writes(false);
 		hal.uartC->set_blocking_writes(false);
 	}
 
 	// Initialize LEDs
-	 hal.gpio->pinMode(13, GPIO_OUTPUT);
+	hal.gpio->pinMode(13, GPIO_OUTPUT);
 	hal.gpio->write(13, 0);
 
     a_led = hal.gpio->channel(27);
@@ -48,10 +48,15 @@ bool Init_Arducopter() {
 	ins.init(AP_InertialSensor::COLD_START,
 			 AP_InertialSensor::RATE_100HZ,
 			 NULL);
+	ahrs.init();  // Internally calls MPU6050's internal sensor fusion (DigitalMotionProcessing)
+
 
 	// Initialize MPU6050's internal sensor fusion (aka DigitalMotionProcessing)
-	hal.scheduler->suspend_timer_procs();  // stop bus collisions
-	ins.dmp_init();
+//	hal.scheduler->suspend_timer_procs();  // stop bus collisions
+//	ins.dmp_init();
+
+	// setup fast AHRS gains to get right attitude
+	ahrs.set_fast_gains(true);
 
 	// Set accelerometer offsets and scale
 //	Vector3<float> accel_offsets(ACCEL_X_OFFSET, ACCEL_Y_OFFSET, ACCEL_Z_OFFSET);
@@ -59,17 +64,38 @@ bool Init_Arducopter() {
 //	ins.set_accel_offsets(accel_offsets);
 //	ins.set_accel_scale(accel_scaling);
 
-	ins.push_gyro_offsets_to_dmp();
+//	ins.push_gyro_offsets_to_dmp();
 //	ins.push_accel_offsets_to_dmp();
 
 	// Initialize LIDAR and ensure it is connected at startup
-	if (LIDAR_ENABLED == ENABLED && !lidar.init()) {
+#if LIDAR == ENABLED
+	if (DEBUG == ENABLED) {
+		hal.console->println("Initializing LIDAR...");
+	}
+	if (!lidar.init()) {
 		hal.console->println("LIDAR not initialized. Must correct issue before flight");
 		return false;
 	}
 
-	hal.scheduler->delay(50);
-	hal.scheduler->resume_timer_procs();
+	if (DEBUG == ENABLED) {
+		hal.console->println("LIDAR initialized...");
+	}
+
+	// Initialize the Optical Flow sensor and ensure it is connected at startup
+#if OPTFLOW == ENABLED
+	if (!opticalFlow.init()) {
+		hal.console->println("Optical Flow is enabled but failed to initialize the sensor");
+		return false;
+	}
+#endif // OPTFLOW == ENABLED
+
+#endif // LIDAR == ENABLED
+
+
+
+//	hal.scheduler->delay(50);
+//	hal.scheduler->resume_timer_procs();
+
 
 	return true;
 }
@@ -79,7 +105,7 @@ bool Init_Arducopter() {
  */
 void Setup_Motors() {
 
-	if (DEBUG_ENABLED) {
+	if (DEBUG) {
 		hal.console->println("Setting up motors.");
 	}
 
