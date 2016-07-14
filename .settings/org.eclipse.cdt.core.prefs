@@ -1,6 +1,4 @@
 =\=\=\=\=\=\=
-<<<<<<<=HEAD
->>>>>>>=origin/optflow_lidar
 eclipse.preferences.version=1
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.ALT_SIZE_COMMAND/delimiter=\:
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.ALT_SIZE_COMMAND/operation=replace
@@ -169,10 +167,10 @@ environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.DTS/value=3600
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.LOCAL/delimiter=\:
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.LOCAL/operation=replace
-environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.LOCAL/value=1468497401
+environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.LOCAL/value=1468498724
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.UTC/delimiter=\:
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.UTC/operation=replace
-environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.UTC/value=1468511801
+environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.UTC/value=1468513124
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.ZONE/delimiter=\:
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.ZONE/operation=replace
 environment/project/it.baeyens.arduino.core.toolChain.release.1406935932/A.EXTRA.TIME.ZONE/value=-18000

@@ -72,7 +72,7 @@ bool Init_Arducopter() {
 	if (DEBUG == ENABLED) {
 		hal.console->println("Initializing LIDAR...");
 	}
-	if (!lidar.init()) {
+	if (!lidar->init()) {
 		hal.console->println("LIDAR not initialized. Must correct issue before flight");
 		return false;
 	}

@@ -205,9 +205,9 @@ void individual_Motor_Test(int8_t motor_num)
 
 void lidarTest() {
 #if LIDAR == ENABLED
-	uint16_t lidarDistCm = lidar.getLastDistance();
+	uint16_t lidarDistCm = lidar->getLastDistance();
 
-	if (!lidar.isHealthy()) {
+	if (!lidar->isHealthy()) {
 		// Failsafe here...
 		a_led->write(0);
 		b_led->write(1);

@@ -17,8 +17,8 @@ bool RangeFinder::isHealthy() {
 	///////////////////////////////////////////////////////////////////
 //	return true;
 
-	if (hal.scheduler->millis() - timeLastUpdate >= LIDAR_READ_TIMEOUT_MS ||
-			numReadFails >= LIDAR_READ_TIMOUT_ATTEMPTS) {
+	if (hal.scheduler->millis() - timeLastUpdate >= RANGEFINDER_READ_TIMEOUT_MS ||
+			numReadFails >= RANGEFINDER_READ_TIMOUT_ATTEMPTS) {
 		return false;
 	} else {
 		return true;

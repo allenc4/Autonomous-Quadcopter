@@ -5,7 +5,7 @@
  * Returns false if the write was unsuccessful (probably disconnected). If false is returned,
  * LIDAR is NOT ready to use. If everything is connected and working OK, returns true.
  */
-bool RangeFinder_Lidar::init() {
+bool RangeFinder_SR04::init() {
 	// TODO - Implement
 	return true;
 }
@@ -15,7 +15,7 @@ bool RangeFinder_Lidar::init() {
  * Gets the last read distance (in centimeters) if there is a successful read.
  * If the read was successful, returns true; otherwise, returns false
  */
-bool RangeFinder_Lidar::update() {
+bool RangeFinder_SR04::update() {
 	// TODO - Implement
 	return false;
 }
@@ -25,7 +25,7 @@ bool RangeFinder_Lidar::update() {
  * If the read was successful, returns true and updates the passed parameter
  * with the distance in centimeters; otherwise, returns false
  */
-bool RangeFinder_Lidar::update(uint16_t &distance) {
+bool RangeFinder_SR04::update(uint16_t &distance) {
 	bool stat = update();
 	if (stat) {
 		distance = distCM;

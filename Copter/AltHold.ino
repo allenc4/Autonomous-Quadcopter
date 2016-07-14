@@ -93,7 +93,7 @@ void AltHold::holdAltitute(){
 	//map the throttle to the available height range
 	currentThrottle = this->_mapThrottle(currentThrottle, RC_THROTTLE_MIN, RC_THROTTLE_MAX, ALTHOLD_HEIGHT_MIN, ALTHOLD_HEIGHT_MAX);
 	int32_t currentState;
-	uint16_t currentDistance = lidar.getLastDistance();
+	uint16_t currentDistance = lidar->getLastDistance();
 
 	//if we were taking off and haven't gotten to the proper height yet keep taking off
 	if(this->_lastState == ALTHOLD_TAKEOFF && currentDistance < ALTHOLD_HEIGHT_TAKEOFF)
@@ -165,7 +165,7 @@ void AltHold::_updateCurrentVelocity(){
 		return;
 	}
 
-	uint16_t currentDistance = lidar.getLastDistance();
+	uint16_t currentDistance = lidar->getLastDistance();
 	float timeDiff = (float)currentTime - (float)this->_lastVelUpdateTime;
 	timeDiff /= 1000; //convert to seconds
 	float distanceDiff = (float)currentDistance - (float)this->_lastDistance;
@@ -181,7 +181,7 @@ void AltHold::_updateVelocity(uint32_t targetDistance){
 	hal.console->print(" Target Distance: ");
 	hal.console->print(targetDistance);
 
-	uint32_t currentDistance = lidar.getLastDistance();
+	uint32_t currentDistance = lidar->getLastDistance();
 
 	hal.console->print(" Current Distance: ");
 	hal.console->print(currentDistance);

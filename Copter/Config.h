@@ -23,7 +23,7 @@
 #define LIDAR			ENABLED
 
 // Optical Flow sensor
-#define OPTFLOW					ENABLED
+#define OPTFLOW					DISABLED
 
 //////////////////////////////////////////////////////////////////////////////
 // HARDWARE CONFIGURATION AND CONNECTIONS
@@ -176,9 +176,9 @@
 #define REGISTER_MEASURE 			0x00 	// Register to write to initiate ranging
 #define MEASURE_VALUE				0x04	// Value to initiate ranging
 #define REGISTER_HIGH_LOW_BYTES		0x8f	// Register to get both High and Low bytes
-#define LIDAR_READ_TIMEOUT_MS		1000	// Time (in milliseconds) to wait for new LIDAR data before
+#define RANGEFINDER_READ_TIMEOUT_MS		1000	// Time (in milliseconds) to wait for new LIDAR data before
 											// triggering a watchdog timeout
-#define LIDAR_READ_TIMOUT_ATTEMPTS	10		// Only allow 10 attempts of consecutive read fails before throwing error
+#define RANGEFINDER_READ_TIMOUT_ATTEMPTS	10		// Only allow 10 attempts of consecutive read fails before throwing error
 
 //#define ROLL_PITCH_INPUT_MAX      4500            // roll, pitch input range (45 degrees)
 //#define DEFAULT_ANGLE_MAX         4500            // Maximum lean angle (45 degrees)

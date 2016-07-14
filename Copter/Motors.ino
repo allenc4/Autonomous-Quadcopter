@@ -152,7 +152,6 @@ void Motors::output() {
 //				gyro_pitch,
 //				pitch_output);
 
-<<<<<<< HEAD
 //
 //				hal.console->printf("Motor PWMs....FL: %li\t BL: %li\t FR: %li\t BR: %li\t\t",
 //						rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output, // - yaw_output,
@@ -160,19 +159,10 @@ void Motors::output() {
 //						rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output, // + yaw_output,
 //						rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output); // - yaw_output);
 
-=======
-
-				hal.console->printf("Motor PWMs....FL: %ld\t BL: %ld\t FR: %ld\t BR: %ld\t\t",
-						rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output, // - yaw_output,
-						rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output, // + yaw_output,
-						rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output, // + yaw_output,
-						rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output); // - yaw_output);
-
 #if OPTFLOW == ENABLED && LIDAR == ENABLED
 				hal.console->printf("Optflow x: %3.1f\t y: %3.1f\t",
 						opticalFlow.get_change_x(), opticalFlow.get_change_y());
 #endif
->>>>>>> origin/optflow_lidar
 
 //				hal.console->printf("RC throt: %li\t RC pit: %li\t RC roll: %li\t RC yaw: %li\t\t",
 //						rc_channels[RC_CHANNEL_THROTTLE],
@@ -183,8 +173,8 @@ void Motors::output() {
 //						sensor_pitch, sensor_roll, sensor_yaw);
 //				hal.console->printf("Gyro Pitch: %4.1f\t Roll: %4.1f\t Yaw: %4.1f\t",
 //						gyro_pitch, gyro_roll, gyro_yaw);
-				hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\n",
-						pitch_output, roll_output, yaw_output);
+//				hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\n",
+//						pitch_output, roll_output, yaw_output);
 
 
 

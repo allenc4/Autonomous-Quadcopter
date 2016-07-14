@@ -41,7 +41,7 @@
 #include "Config.h"
 #include "Motors.h"
 #include "OpticalFlow.h"
-#include "RangeFinder.h"
+#include "RangeFinder_Lidar.h"
 
 // Function definitions
 static void fast_loop();
@@ -80,11 +80,11 @@ PID pids[6];
 
 // LIDAR Lite
 #if LIDAR == ENABLED
-RangeFinder lidar;
+RangeFinder * lidar = new RangeFinder_Lidar();
 
 // Lidar must be enabled (for altitude) to enable optical flow
 #if OPTFLOW == ENABLED
-OpticalFlow opticalFlow(&lidar);
+OpticalFlow opticalFlow(lidar);
 #endif
 #endif
 
@@ -234,11 +234,7 @@ void loop()
 {
 	uint32_t currentMillis = hal.scheduler->millis();
 	
-<<<<<<< HEAD
-	while(ins.num_samples_available() <= 0);
-=======
 	while (ins.num_samples_available() == 0);
->>>>>>> origin/optflow_lidar
 
 	// Execute the fast loop
 	// ---------------------
@@ -318,16 +314,11 @@ static void fast_loop() {
 	//	rc_channels[RC_CHANNEL_PITCH] = 0;
 	//	rc_channels[RC_CHANNEL_YAW] = 0;
 
-	// Output throttle response to motors
-	 motors.output();
-}
 
-static void medium_loop() {
-//	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED
-	lidar.update();
+	lidar->update();
 
 	// Test and display LIDAR values
 //	lidarTest();
@@ -340,9 +331,7 @@ static void medium_loop() {
 #endif
 
 	// Output throttle response to motors
-	 motors.output();
-
-	loop_count++;
+	motors.output();
 }
 
 static void medium_loop() {
