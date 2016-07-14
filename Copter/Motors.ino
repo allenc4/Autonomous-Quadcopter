@@ -7,6 +7,7 @@
 
 #include "Motors.h"
 
+
 /**
  * Output a specified PWM to a specified motor number defined in the configuration header file.
  * A pulse width of RC_THROTTLE_MIN + 50 and below will be set to zero (turn motor off).
@@ -63,7 +64,9 @@ void Motors::output() {
 	double gyro_yaw   = ToDeg(gyro.z);
 
 	// Correct roll and pitch for drift using optical flow sensor
-#if OPTFLOW == ENABLED && LIDAR == ENABLED
+#if LIDAR == ENABLED
+	altHold.holdAltitute();
+#if OPTFLOW == ENABLED
 	rc_channels[RC_CHANNEL_ROLL]  = opticalFlow.get_of_roll(
 			rc_channels[RC_CHANNEL_ROLL],
 			rc_channels[RC_CHANNEL_YAW]);
@@ -81,6 +84,7 @@ void Motors::output() {
 			loop_count++;
 		}
 	}
+#endif
 #endif
 
 	// Perform stabilization only if throttle is above minimum level
@@ -163,13 +167,14 @@ void Motors::output() {
 //				gyro_pitch,
 //				pitch_output);
 
-
+//
 //				hal.console->printf("Motor PWMs....FL: %li\t BL: %li\t FR: %li\t BR: %li\t\t",
 //						rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output, // - yaw_output,
 //						rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output, // + yaw_output,
 //						rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output, // + yaw_output,
 //						rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output); // - yaw_output);
-//
+
+
 //				hal.console->printf("RC throt: %li\t RC pit: %li\t RC roll: %li\t RC yaw: %li\t\t",
 //						rc_channels[RC_CHANNEL_THROTTLE],
 //						rc_channels[RC_CHANNEL_PITCH],

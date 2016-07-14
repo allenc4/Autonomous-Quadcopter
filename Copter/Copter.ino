@@ -296,15 +296,13 @@ static void fast_loop() {
 	//	rc_channels[RC_CHANNEL_PITCH] = 0;
 	//	rc_channels[RC_CHANNEL_YAW] = 0;
 
-	// Test and display LIDAR values
-	lidarTest();
 
 	// Output throttle response to motors
 	 motors.output();
 }
 
 static void medium_loop() {
-	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
+//	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED

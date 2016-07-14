@@ -12,6 +12,7 @@
 
 #include "Config.h"
 #include "OpticalFlow.h"
+#include "AltHold.h"
 
 class Motors {
 
@@ -31,7 +32,7 @@ public:
 private:
 	float target_yaw;
 	const int8_t min_throttle_offset = 75;
-
+	AltHold altHold;
 	float wrap_180(float x);
 };
 

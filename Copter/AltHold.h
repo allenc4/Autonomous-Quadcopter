@@ -10,46 +10,75 @@
 
 #include "RangeFinder.h"
 #include "PID.h"
+#include "AP_Math.h"
 
 
-#define ALTHOLD_HOLDING 0
-#define ALTHOLD_TAKEOFF 1
-#define ALTHOLD_LANDING	2
-#define ALTHOLD_STOPPED 3
+#define ALTHOLD_HOLDING 					0
+#define ALTHOLD_TAKEOFF 					1
+#define ALTHOLD_LANDING						2
+#define ALTHOLD_STOPPED 					3
 
 //max and min height in cm
-#define ALTHOLD_HEIGHT_MIN	10
-#define ALTHOLD_HEIGHT_MAX	150
-#define ALTHOLD_HEIGHT_TAKEOFF 20
-#define ALTHOLD_HEIGHT_LAND 15
+#define ALTHOLD_HEIGHT_MIN					10
+#define ALTHOLD_HEIGHT_MAX					150
+#define ALTHOLD_HEIGHT_TAKEOFF 				20
+#define ALTHOLD_HEIGHT_LAND 				15
 
-#define ALTHOLD_HEIGHT_THRESHOLD 2
+#define ALTHOLD_HEIGHT_THRESHOLD 			2
 
-#define ALTHOLD_ACCELERATION_MAX 2 // cm/s //really slow
+#define ALTHOLD_DISTANCE_P 					1
+#define ALTHOLD_DISTANCE_I 					0
+#define ALTHOLD_DISTANCE_D 					0
+#define ALTHOLD_DISTANCE_IMAX 				0
+
+#define ALTHOLD_VELOCITY_P 					0.75
+#define ALTHOLD_VELOCITY_I 					1.5
+#define ALTHOLD_VELOCITY_D 					0
+#define ALTHOLD_VELOCITY_IMAX 				5
+
+#define ALTHOLD_ACCEL_P 					6
+#define ALTHOLD_ACCEL_I 					0
+#define ALTHOLD_ACCEL_D 					0
+#define ALTHOLD_ACCEL_IMAX 					0
+
+// cm/s/s //really slow
+#define ALTHOLD_ACCELERATION_MAX 			250
+// cm/s max velocity
+#define ALTHOLD_VELOCITY_MAX 				250
+//The max change in distance we want from frame to frame
+#define ALTHOLD_MAX_DISTANCE_LEASH_LENGTH 	100 //1m
+
+#define ALTHOLD_ACCEL_UPDATE_INTERVAL 		500 //ms
+
+#define ALTHOLD_DEBUG 						DISABLED
 
 class AltHold{
 public:
 	AltHold();
-	int32_t getP();
-	int32_t getD();
-	int32_t getI();
-	void setP(int32_t p);
-	void setD(int32_t d);
-	void setI(int32_t i);
+	PID getDistancePid();
+	PID getAccelerationPid();
+	PID getVelocityPid();
 	void holdAltitute();
 private:
-	int32_t _p;
-	int32_t _i;
-	int32_t _d;
-	PID pid;
+	PID * _distancePid;
+	PID * _accelPid;
+	PID * _velocityPid;
 	int32_t _lastState;
 	long _lastThrottle;
-	int32_t _hoverValue;
-	int32_t _acceleration; // cm/s
-	int32_t _lastAccelUpdateTime;
+	float _acceleration; // cm/s
+	int32_t _lastVelUpdateTime;
 	int32_t _lastDistance;
+	int32_t _hoverPoint;
+	float _velocity;
+	float _lastVelocityTarget;
+	float _distanceLeashLength;
 	long _mapThrottle(long x, long in_min, long in_max, long out_min, long out_max);
+	void _updateCurrentVelocity();
+	void _updateVelocity(uint32_t targetDistance);
 	void _updateAcceleration();
+	float sqrt_controller(float error, float p, float second_ord_lim);
+	void _updateAcceleration(float targetVelocity);
+	void _updateThrottleOutput(float targetAcceleration);
 };
 
 #endif
