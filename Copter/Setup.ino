@@ -20,28 +20,28 @@ bool Init_Arducopter() {
 	}
 
 	// Initialize LEDs
-	hal.gpio->pinMode(13, GPIO_OUTPUT);
+	hal.gpio->pinMode(13, HAL_GPIO_OUTPUT);
 	hal.gpio->write(13, 0);
 
-    a_led = hal.gpio->channel(27);
-	b_led = hal.gpio->channel(26);
-    c_led = hal.gpio->channel(25);
+    a_led = hal.gpio->channel(HAL_GPIO_A_LED_PIN);
+	b_led = hal.gpio->channel(HAL_GPIO_B_LED_PIN);
+    c_led = hal.gpio->channel(HAL_GPIO_C_LED_PIN);
 
-    a_led->mode(GPIO_OUTPUT);
-	b_led->mode(GPIO_OUTPUT);
-    c_led->mode(GPIO_OUTPUT);
+    a_led->mode(HAL_GPIO_OUTPUT);
+	b_led->mode(HAL_GPIO_OUTPUT);
+    c_led->mode(HAL_GPIO_OUTPUT);
 
     // Turn A and C lights off during setup, but leave B on.
-    a_led->write(1);
-	b_led->write(0);
-    c_led->write(1);
+    a_led->write(HAL_GPIO_LED_OFF);
+	b_led->write(HAL_GPIO_LED_ON);
+    c_led->write(HAL_GPIO_LED_OFF);
 
 	/*
 	 * Get the accelerometer, magnetometer, and gyroscope sensors ready
 	 */
 
 	// Disable barometer to stop it corrupting bus
-	hal.gpio->pinMode(40, GPIO_OUTPUT);
+	hal.gpio->pinMode(40, HAL_GPIO_OUTPUT);
 	hal.gpio->write(40, 1);
 
 	// Initialize MPU6050 sensor
