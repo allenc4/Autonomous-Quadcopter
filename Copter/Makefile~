@@ -1,4 +1,0 @@
-AVRDUDE_OPTS = -V -v -v
-
-include ../mk/apm.mk
-
