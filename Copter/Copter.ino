@@ -28,6 +28,7 @@
 
 #include <AP_HAL.h>
 #include <AP_HAL_AVR.h>
+#include <GPIO.h>
 
 #include <AC_PID.h>
 #include <PID.h>
@@ -101,7 +102,7 @@ AP_HAL::DigitalSource *b_led;
 AP_HAL::DigitalSource *c_led;
 
 // For debugging and printing to console
-uint16_t loop_count;
+uint32_t loop_count;
 
 // System Timers
 //timer for how often medium loop should be executed
@@ -152,15 +153,15 @@ void setup()
 	if (!Init_Arducopter()) {
 		// Something went wrong in the initial setup, so we dont want to continue.
 		// Flash red light letting user know an error occurred
-		a_led->write(0);
-		b_led->write(1);
-		c_led->write(1);
+		a_led->write(HAL_GPIO_LED_ON);
+		b_led->write(HAL_GPIO_LED_OFF);
+		c_led->write(HAL_GPIO_LED_OFF);
 		hal.scheduler->delay(1000);
 
 		while (true) {
-			a_led->write(1);
+			a_led->write(HAL_GPIO_LED_OFF);
 			hal.scheduler->delay(1000);
-			a_led->write(0);
+			a_led->write(HAL_GPIO_LED_ON);
 			hal.scheduler->delay(1000);
 		}
 	}
@@ -223,13 +224,21 @@ void setup()
 
 	Setup_Motors();
 
+	// Turn on green/blue light
+	a_led->write(HAL_GPIO_LED_OFF);
+	b_led->write(HAL_GPIO_LED_OFF);
+	c_led->write(HAL_GPIO_LED_ON);
 }
 
 void loop()
 {
 	uint32_t currentMillis = hal.scheduler->millis();
 	
+<<<<<<< HEAD
 	while(ins.num_samples_available() <= 0);
+=======
+	while (ins.num_samples_available() == 0);
+>>>>>>> origin/optflow_lidar
 
 	// Execute the fast loop
 	// ---------------------
@@ -290,12 +299,24 @@ static void fast_loop() {
 
 	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
 
+//	if (DEBUG == ENABLED) {
+//		if (loop_count % 10 == 0) {
+////			hal.console->printf("Channels: [1]: %u\t [2]: %u\t [3]: %u\t [4]: %u\t [5]: %u\t [6]: %u\t [7]: %u \t [8]: %u\n",
+////					channels[0], channels[1], channels[2], channels[3], channels[4], channels[5], channels[6], channels[7]);
+//
+//			hal.console->printf("Throttle: %ld\t Roll: %u (%ld)\t Pitch: %u (%ld)\t Yaw: %u (%ld)\n",
+//					rc_channels[RC_CHANNEL_THROTTLE],
+//					channels[RC_CHANNEL_ROLL], rc_channels[RC_CHANNEL_ROLL],
+//					channels[RC_CHANNEL_PITCH], rc_channels[RC_CHANNEL_PITCH],
+//					channels[RC_CHANNEL_YAW], rc_channels[RC_CHANNEL_YAW]);
+//		}
+//	}
+
 	// DEBUGGING PURPOSES ONLY ///////////////////////////////
 	//	rc_channels[RC_CHANNEL_THROTTLE] = RC_THROTTLE_MIN + 400;
 	//	rc_channels[RC_CHANNEL_ROLL] = 0;
 	//	rc_channels[RC_CHANNEL_PITCH] = 0;
 	//	rc_channels[RC_CHANNEL_YAW] = 0;
-
 
 	// Output throttle response to motors
 	 motors.output();
@@ -313,8 +334,20 @@ static void medium_loop() {
 
 #if OPTFLOW == ENABLED
 	opticalFlow.update();
+//	opticalFlow.debug_print();
+
 #endif
 #endif
+
+	// Output throttle response to motors
+	 motors.output();
+
+	loop_count++;
+}
+
+static void medium_loop() {
+//	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
+
 
 }
 

@@ -23,12 +23,7 @@
 #define LIDAR			ENABLED
 
 // Optical Flow sensor
-#define OPTFLOW					DISABLED
-#define OPTFLOW_ORIENTATION 	AP_OPTICALFLOW_ADNS3080_PINS_FORWARD
-#define OPTFLOW_RESOLUTION		ADNS3080_RESOLUTION_1600
-#define OPTFLOW_FOV				AP_OPTICALFLOW_ADNS3080_08_FOV
-
-
+#define OPTFLOW					ENABLED
 
 //////////////////////////////////////////////////////////////////////////////
 // HARDWARE CONFIGURATION AND CONNECTIONS
@@ -36,12 +31,7 @@
 #ifndef CONFIG_HAL_BOARD
 #error CONFIG_HAL_BOARD must be defined to build ArduCopter
 #endif
-//////////////////////////////////////////////////////////////////////////////
-// sensor types
 
-#define CONFIG_INS_TYPE HAL_INS_DEFAULT
-#define CONFIG_BARO     HAL_BARO_DEFAULT
-#define CONFIG_COMPASS  HAL_COMPASS_DEFAULT
 
 #ifdef HAL_SERIAL0_BAUD_DEFAULT
 # define SERIAL0_BAUD HAL_SERIAL0_BAUD_DEFAULT
@@ -86,7 +76,7 @@
 //#define INS_YAW_OFFSET		-0.9585314622399
 
 // Accelerometer offset in degrees
-#define ACCEL_X_OFFSET		-7.1 // -0.9  // Roll
+#define ACCEL_X_OFFSET		-4.4// -0.9  // Roll
 #define ACCEL_Y_OFFSET		7.3// 2.645 // Pitch
 #define ACCEL_Z_OFFSET		0 	  // Yaw
 //#define ACCEL_X_SCALE		1
@@ -109,13 +99,16 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Motor mapping
+//
 #define MOTOR_FL    2  // Front left
 #define MOTOR_FR    0  // Front Right
 #define MOTOR_BL    1  // Back Left
 #define MOTOR_BR    3  // Back Right
 
 
+///////////////////////////////////////////////////////////////////////////////
 // ESC update speed
+//
 #define RC_FAST_SPEED       490
 #define RC_SLOW_SPEED		50
 
@@ -149,18 +142,6 @@
 #define PID_YAW_STAB 			5
 #define 	YAW_STAB_P			10
 
-
-//////////////////////////////////////////////////////////////////////////////
-// I2C / Lidar
-#define LIDAR_ADDRESS				0x62	// I2C address of the LIDAR
-#define REGISTER_MEASURE 			0x00 	// Register to write to initiate ranging
-#define MEASURE_VALUE				0x04	// Value to initiate ranging
-#define REGISTER_HIGH_LOW_BYTES		0x8f	// Register to get both High and Low bytes
-#define LIDAR_READ_TIMEOUT_MS		1000	// Time (in milliseconds) to wait for new LIDAR data before
-											// triggering a watchdog timeout
-#define LIDAR_READ_TIMOUT_ATTEMPTS	10		// Only allow 10 attempts of consecutive read fails before throwing error
-
-
 // Optical Flow PIDs
 #define PID_OPTFLOW_PITCH		0
 #define     OPTFLOW_PITCH_P		2.5f
@@ -172,7 +153,22 @@
 #define		OPTFLOW_ROLL_D		0.12f
 #define OPTFLOW_I_MAX			1
 
-
+// GPIO LED pins
+#ifndef HAL_GPIO_A_LED_PIN
+ # define HAL_GPIO_A_LED_PIN        27
+#endif
+#ifndef HAL_GPIO_B_LED_PIN
+ # define HAL_GPIO_B_LED_PIN        26
+#endif
+#ifndef HAL_GPIO_C_LED_PIN
+ # define HAL_GPIO_C_LED_PIN        25
+#endif
+#ifndef HAL_GPIO_LED_ON
+ # define HAL_GPIO_LED_ON           0
+#endif
+#ifndef HAL_GPIO_LED_OFF
+ # define HAL_GPIO_LED_OFF          1
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // I2C / Lidar

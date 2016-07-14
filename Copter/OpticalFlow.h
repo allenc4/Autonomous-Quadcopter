@@ -13,6 +13,10 @@
 #include "Config.h"
 #include "RangeFinder.h"
 
+#define OPTFLOW_ORIENTATION 	AP_OPTICALFLOW_ADNS3080_PINS_FORWARD
+#define OPTFLOW_RESOLUTION		ADNS3080_RESOLUTION_1600
+#define OPTFLOW_FOV				AP_OPTICALFLOW_ADNS3080_08_FOV
+
 static AP_OpticalFlow_ADNS3080 _optflow;
 AC_PID pids_optflow[2]; // Only need pitch (0) and roll (1) PIDs
 
@@ -29,8 +33,14 @@ public:
 
 	float get_change_x();
 	float get_change_y();
+	void debug_print();
+
+	static void read(uint32_t now);
 private:
 	RangeFinder *rangeFinder;
+	uint32_t last_of_update;
+	uint32_t last_of_roll_update;
+	uint32_t last_of_pitch_update;
 };
 
 #endif /* OPTICALFLOW_H_ */

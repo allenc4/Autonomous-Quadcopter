@@ -13,10 +13,10 @@
 class RangeFinder {
 public:
 	RangeFinder();
-	bool init();
+	virtual bool init();
 	bool isHealthy();
-	bool update();
-	bool update(uint16_t &distance);
+	virtual bool update();
+	virtual bool update(uint16_t &distance);
 	uint16_t getLastDistance();
 private:
 	uint16_t distCM;
