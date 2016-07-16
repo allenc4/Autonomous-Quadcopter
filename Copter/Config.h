@@ -123,7 +123,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
-#define MASTER_P				1.5f
+#define MASTER_P				0.5f
 #define	MASTER_I				0//0.1f
 #define MASTER_D				0//0.004f
 #define MASTER_IMAX				0//500
