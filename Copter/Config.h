@@ -123,31 +123,37 @@
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
+#define MASTER_P				1.5f
+#define	MASTER_I				0//0.1f
+#define MASTER_D				0//0.004f
+#define MASTER_IMAX				0//500
+
 #define PID_PITCH_RATE 			0
-#define 	PITCH_RATE_P		2
-#define		PITCH_RATE_I		0
-#define		PITCH_RATE_D		0
-#define		PITCH_RATE_I_MAX	50
+#define 	PITCH_RATE_P		MASTER_P
+#define		PITCH_RATE_I		MASTER_I
+#define		PITCH_RATE_D		MASTER_D
+#define		PITCH_RATE_I_MAX	MASTER_IMAX
 
 #define PID_ROLL_RATE 			1
-#define		ROLL_RATE_P			2
-#define		ROLL_RATE_I			0
-#define		ROLL_RATE_D			0
-#define 	ROLL_RATE_I_MAX		100
+#define		ROLL_RATE_P			MASTER_P
+#define		ROLL_RATE_I			MASTER_I
+#define		ROLL_RATE_D			MASTER_D
+#define 	ROLL_RATE_I_MAX		MASTER_IMAX
 
 #define PID_YAW_RATE 			2
-#define		YAW_RATE_P			2
-#define		YAW_RATE_I			0
+#define		YAW_RATE_P			0.2f
+#define		YAW_RATE_I			0.02f
 #define		YAW_RATE_D			0
-#define		YAW_RATE_I_MAX		50
+#define		YAW_RATE_I_MAX		0
 
+#define MASTER_STAB_P			4.5f
 // Only P values needed for stability
 #define PID_PITCH_STAB 			3
-#define		PITCH_STAB_P		2
+#define		PITCH_STAB_P		MASTER_STAB_P
 #define PID_ROLL_STAB 			4
-#define 	ROLL_STAB_P			2
+#define 	ROLL_STAB_P			MASTER_STAB_P
 #define PID_YAW_STAB 			5
-#define 	YAW_STAB_P			2
+#define 	YAW_STAB_P			MASTER_STAB_P
 
 // Optical Flow PIDs
 #define PID_OPTFLOW_PITCH		0

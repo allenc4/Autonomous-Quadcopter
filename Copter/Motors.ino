@@ -38,7 +38,7 @@ void Motors::output() {
 	float sensor_roll, sensor_pitch, sensor_yaw;
 
 	//this is just for yaw
-//	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
+	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
 
 	//caluclate roll and pitch from raw accel data
 	Vector3f accel = ins.get_accel();
@@ -50,7 +50,7 @@ void Motors::output() {
 	// Convert everything to degrees
 	sensor_roll  = -ToDeg(sensor_roll);
 	sensor_pitch = ToDeg(sensor_pitch);
-	sensor_yaw   = 0;
+	sensor_yaw   = ToDeg(sensor_yaw);
 
 	// Get rotational velocity data for each axis from the gyro and convert from rad/sec to deg
 	Vector3f gyro = ins.get_gyro();
@@ -152,9 +152,9 @@ void Motors::output() {
 
 		// Only worry about yaw change if the pitch and roll values are semi-stable first.
 		// We want the multirotor level before we make any yaw adjustments.
-		if (abs(pitch_output) > 10 || abs(roll_output) > 10) {
-			yaw_output = 0;
-		}
+//		if (abs(pitch_output) > 10 || abs(roll_output) > 10) {
+//			yaw_output = 0;
+//		}
 
 
 //		// PIDS for rate mode only

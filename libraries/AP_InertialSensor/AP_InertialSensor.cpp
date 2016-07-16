@@ -154,13 +154,11 @@ AP_InertialSensor::_init_gyro(void (*flash_leds_cb)(bool on))
     for(int8_t c = 0; c < 25; c++) {
         // Mostly we are just flashing the LED's here
         // to tell the user to keep the IMU still
-        FLASH_LEDS(true);
         hal.scheduler->delay(20);
 
         update();
         ins_gyro = get_gyro();
 
-        FLASH_LEDS(false);
         hal.scheduler->delay(20);
     }
 
@@ -185,9 +183,7 @@ AP_InertialSensor::_init_gyro(void (*flash_leds_cb)(bool on))
             ins_gyro = get_gyro();
             gyro_sum += ins_gyro;
             if (i % 40 == 20) {
-                FLASH_LEDS(true);
             } else if (i % 40 == 0) {
-                FLASH_LEDS(false);
             }
             hal.scheduler->delay(5);
         }
@@ -203,7 +199,7 @@ AP_InertialSensor::_init_gyro(void (*flash_leds_cb)(bool on))
             // we want the average to be within 0.1 bit, which is 0.04 degrees/s
             last_average = (gyro_avg * 0.5) + (last_average * 0.5);
             _gyro_offset = last_average;
-
+            FLASH_LEDS(false);
             // all done
             return;
         } else if (diff_norm < best_diff) {
@@ -216,6 +212,8 @@ AP_InertialSensor::_init_gyro(void (*flash_leds_cb)(bool on))
     // we've kept the user waiting long enough - use the best pair we
     // found so far
     hal.console->printf_P(PSTR("\ngyro did not converge: diff=%f dps\n"), ToDeg(best_diff));
+
+    FLASH_LEDS(true);
 
     _gyro_offset = best_avg;
 }

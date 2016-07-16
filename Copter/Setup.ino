@@ -49,7 +49,8 @@ bool Init_Arducopter() {
 	// Initialize MPU6050 sensor
 	ins.init(AP_InertialSensor::COLD_START,
 			 AP_InertialSensor::RATE_100HZ,
-			 NULL);
+			 flashLeds);
+
 
 	if(!ins.calibrated()){
 		//flash the leds 3 times so we know it needs to be calibrated
@@ -136,6 +137,33 @@ bool Init_Arducopter() {
 
 
 	return true;
+}
+
+void flashLeds(bool flash){
+	while(flash){
+		a_led->mode(HAL_GPIO_LED_OFF);
+		b_led->mode(HAL_GPIO_LED_ON);
+		c_led->mode(HAL_GPIO_LED_OFF);
+		hal.scheduler->delay(500);
+		a_led->mode(HAL_GPIO_LED_OFF);
+		b_led->mode(HAL_GPIO_LED_OFF);
+		c_led->mode(HAL_GPIO_LED_ON);
+		hal.scheduler->delay(500);
+		a_led->mode(HAL_GPIO_LED_ON);
+		b_led->mode(HAL_GPIO_LED_OFF);
+		c_led->mode(HAL_GPIO_LED_OFF);
+		hal.scheduler->delay(500);
+	}
+
+	if(!flash){
+		a_led->mode(HAL_GPIO_LED_OFF);
+		b_led->mode(HAL_GPIO_LED_OFF);
+		c_led->mode(HAL_GPIO_LED_OFF);
+		hal.scheduler->delay(500);
+		a_led->mode(HAL_GPIO_LED_OFF);
+		b_led->mode(HAL_GPIO_LED_ON);
+		c_led->mode(HAL_GPIO_LED_OFF);
+	}
 }
 
 /**
