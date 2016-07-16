@@ -37,8 +37,10 @@
 #include <AP_Scheduler.h>       // main loop scheduler
 
 
+
 // Local includes
 #include "Config.h"
+#include "Parameters.h"
 #include "Motors.h"
 #include "OpticalFlow.h"
 #include "RangeFinder_Lidar.h"
@@ -52,6 +54,11 @@ long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
+
+extern const AP_Param::Info var_info[];
+AP_Param param_loader(var_info, HAL_STORAGE_SIZE);
+
+static Parameters g;
 
 // MPU6050 accel/gyro chip
 AP_InertialSensor_MPU6000 ins;
@@ -69,6 +76,10 @@ float cos_yaw            = 1.0;
 float sin_yaw;
 float sin_roll;
 float sin_pitch;
+
+uint32_t lastModeSelectTime;
+uint32_t modeSelectTimer;
+int lastMode;
 
 // Roll and pitch trim values
 float trim_roll, trim_pitch;
@@ -120,6 +131,9 @@ void setup()
 
 	// this needs to be the first call, as it fills memory with sentinel values
 	memcheck_init();
+	//load parameters from eeprom
+	//not sure if this is necessary but it works
+	Parameters::load_parameters();
 
 	loop_count = 0;
 
@@ -177,7 +191,7 @@ void setup()
 		// Wait until we have orientation data
 		while (ins.num_samples_available() == 0);
 
-		hal.scheduler->delay(20);
+		hal.scheduler->delay(50);
 		ins.update();
 		float sensor_roll,sensor_pitch,sensor_yaw;
 		ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
@@ -228,6 +242,7 @@ void setup()
 	a_led->write(HAL_GPIO_LED_OFF);
 	b_led->write(HAL_GPIO_LED_OFF);
 	c_led->write(HAL_GPIO_LED_ON);
+
 }
 
 void loop()
@@ -257,6 +272,7 @@ void loop()
 	// Test and display accelerometer/gyro values
 //	accel_Gyro_Test();
 
+	loop_count++;
 }
 
 // Main loop - 100hz
@@ -296,7 +312,7 @@ static void fast_loop() {
 	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
 
 //	if (DEBUG == ENABLED) {
-//		if (loop_count % 10 == 0) {
+//		if (loop_count % 20 == 0) {
 ////			hal.console->printf("Channels: [1]: %u\t [2]: %u\t [3]: %u\t [4]: %u\t [5]: %u\t [6]: %u\t [7]: %u \t [8]: %u\n",
 ////					channels[0], channels[1], channels[2], channels[3], channels[4], channels[5], channels[6], channels[7]);
 //
@@ -310,9 +326,54 @@ static void fast_loop() {
 
 	// DEBUGGING PURPOSES ONLY ///////////////////////////////
 	//	rc_channels[RC_CHANNEL_THROTTLE] = RC_THROTTLE_MIN + 400;
-		rc_channels[RC_CHANNEL_ROLL] = 0;
-		rc_channels[RC_CHANNEL_PITCH] = 0;
-		rc_channels[RC_CHANNEL_YAW] = 0;
+//		rc_channels[RC_CHANNEL_ROLL] = 0;
+//		rc_channels[RC_CHANNEL_PITCH] = 0;
+//		rc_channels[RC_CHANNEL_YAW] = 0;
+
+	if((rc_channels[RC_CHANNEL_THROTTLE] <= RC_THROTTLE_MIN + 75 && rc_channels[RC_CHANNEL_YAW] > (RC_YAW_MAX_SCALED - 25)))
+	{
+		if(lastMode != ACCEL_CALIBRATE_MODE)
+		{
+			lastModeSelectTime = hal.scheduler->millis();
+			modeSelectTimer = 0;
+			lastMode = ACCEL_CALIBRATE_MODE;
+		}
+
+		uint32_t currentTime = hal.scheduler->millis();
+		modeSelectTimer += currentTime - lastModeSelectTime;
+		lastModeSelectTime = currentTime;
+	}
+
+	if(lastMode == ACCEL_CALIBRATE_MODE && modeSelectTimer > MODE_SELECT_TIME){
+		//flash the leds 3 times so we know it needs to be calibrated
+		for(int i = 0; i < 4; i++)
+		{
+			a_led->write(HAL_GPIO_LED_OFF);
+			b_led->write(HAL_GPIO_LED_OFF);
+			c_led->write(HAL_GPIO_LED_OFF);
+			hal.scheduler->delay(1000);
+			a_led->write(HAL_GPIO_LED_ON);
+			b_led->write(HAL_GPIO_LED_ON);
+			c_led->write(HAL_GPIO_LED_ON);
+			hal.scheduler->delay(1000);
+		}
+		// Initialize MPU6050 sensor
+		float roll_trim, pitch_trim;
+		AP_InertialSensor_UserInteractStream interact(hal.console);
+		if(!ins.calibrate_accel(NULL, &interact, roll_trim, pitch_trim)){
+			while (true) {
+				a_led->write(HAL_GPIO_LED_OFF);
+				hal.scheduler->delay(1000);
+				a_led->write(HAL_GPIO_LED_ON);
+				hal.scheduler->delay(1000);
+			}
+		}
+
+		ins.push_accel_offsets_to_dmp();
+		ins.push_gyro_offsets_to_dmp();
+		lastMode = NO_MODE;
+		modeSelectTimer = 0;
+	}
 
 
 

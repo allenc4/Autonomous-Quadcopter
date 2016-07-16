@@ -36,17 +36,26 @@ void Motors::output() {
 
 	// Get yaw/pitch/roll data from MPU6050 sensor and convert to degrees
 	float sensor_roll, sensor_pitch, sensor_yaw;
-	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
 
-	// Add offsets to roll and pitch
-	sensor_roll  = ToDeg(sensor_roll)  + ACCEL_X_OFFSET;
-	sensor_pitch = ToDeg(sensor_pitch) + ACCEL_Y_OFFSET;
-	sensor_yaw   = ToDeg(sensor_yaw);
+	//this is just for yaw
+//	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
+
+	//caluclate roll and pitch from raw accel data
+	Vector3f accel = ins.get_accel();
+	sensor_roll = 	atan(	accel.y / (sqrt(pow(accel.x, 2) + pow(accel.z, 2))));
+	sensor_pitch = 	atan(	accel.x / (sqrt(pow(accel.y, 2) + pow(accel.z, 2))));
+//	sensor_yaw = 	atan(	sqrt(pow(accel.x, 2) + pow(accel.y, 2)) / accel.z);
+//
+
+	// Convert everything to degrees
+	sensor_roll  = -ToDeg(sensor_roll);
+	sensor_pitch = ToDeg(sensor_pitch);
+	sensor_yaw   = 0;
 
 	// Get rotational velocity data for each axis from the gyro and convert from rad/sec to deg
 	Vector3f gyro = ins.get_gyro();
-	double gyro_pitch = ToDeg(gyro.y) + INS_PITCH_OFFSET;
-	double gyro_roll  = ToDeg(gyro.x) + INS_ROLL_OFFSET;
+	double gyro_pitch = ToDeg(gyro.y);
+	double gyro_roll  = ToDeg(gyro.x);
 	double gyro_yaw   = ToDeg(gyro.z);
 
 	// Correct roll and pitch for drift using optical flow sensor
@@ -78,6 +87,33 @@ void Motors::output() {
 
 		// To get the PID, we need to get the error from where we currently are to where we want to be
 
+		if(sensor_pitch < THRESHOLD_PITCH_OUTPUT && sensor_pitch > -THRESHOLD_PITCH_OUTPUT)
+		{
+			sensor_pitch = 0;
+		}
+		if(sensor_roll < THRESHOLD_ROLL_OUTPUT && sensor_roll > -THRESHOLD_ROLL_OUTPUT)
+		{
+			sensor_roll = 0;
+		}
+		if(sensor_yaw < THRESHOLD_YAW_OUTPUT && sensor_yaw > -THRESHOLD_YAW_OUTPUT)
+		{
+			sensor_yaw = 0;
+		}
+		if(gyro_pitch < THRESHOLD_PITCH_OUTPUT && gyro_pitch > -THRESHOLD_PITCH_OUTPUT)
+		{
+			gyro_pitch = 0;
+		}
+		if(gyro_roll < THRESHOLD_ROLL_OUTPUT && gyro_roll > -THRESHOLD_ROLL_OUTPUT)
+		{
+			gyro_roll = 0;
+		}
+		if(gyro_yaw < THRESHOLD_YAW_OUTPUT && gyro_yaw > -THRESHOLD_YAW_OUTPUT)
+		{
+			gyro_yaw = 0;
+		}
+
+
+
 		// Stability PIDS
 		float stab_output_pitch = constrain_float(
 				pids[PID_PITCH_STAB].get_pid((float)rc_channels[RC_CHANNEL_PITCH] - sensor_pitch, 1),
@@ -100,7 +136,7 @@ void Motors::output() {
 			target_yaw = sensor_yaw; // remember for when radio stops
 		}
 
-		// Acrobatic/Rate PIDS
+//		// Acrobatic/Rate PIDS
 		long pitch_output = (long) constrain_int16(
 				pids[PID_PITCH_RATE].get_pid(stab_output_pitch - gyro_pitch, 1),
 				-500,
@@ -116,17 +152,10 @@ void Motors::output() {
 
 		// Only worry about yaw change if the pitch and roll values are semi-stable first.
 		// We want the multirotor level before we make any yaw adjustments.
-		if (abs(pitch_output) > 10 || abs(roll_output) > 10 || abs(yaw_output) < THRESHOLD_YAW_OUTPUT) {
+		if (abs(pitch_output) > 10 || abs(roll_output) > 10) {
 			yaw_output = 0;
 		}
 
-		// Only compensate if the roll, pitch, and yaw values are above the pre-defined threshold
-//		if (abs(pitch_output) < THRESHOLD_PITCH_OUTPUT) {
-//			pitch_output = 0;
-//		}
-//		if (abs(roll_output) < THRESHOLD_ROLL_OUTPUT) {
-//			roll_output = 0;
-//		}
 
 //		// PIDS for rate mode only
 		// error = desired - actual
@@ -142,7 +171,7 @@ void Motors::output() {
 		// Print out the sensor yaw/pitch/roll data in degrees
 		if (DEBUG == ENABLED)
 		{
-			if (loop_count % 10 == 0)
+			if (loop_count % 20 == 0)
 			{
 
 //				hal.console->printf("rc_channel_pitch: %4.1f\t accel_pitch: %4.1f\t stab_out_pitch: %4.1f\t gyro_pitch: %4.1f\t pitch_output: %li\n",
@@ -173,9 +202,9 @@ void Motors::output() {
 						sensor_pitch, sensor_roll, sensor_yaw);
 				hal.console->printf("Gyro Pitch: %4.1f\t Roll: %4.1f\t Yaw: %4.1f\t",
 						gyro_pitch, gyro_roll, gyro_yaw);
-				hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\n",
+				hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\t",
 						pitch_output, roll_output, yaw_output);
-
+				hal.console->printf("OUTPUT: %ld\n", (rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output - yaw_output) );
 
 
 			}

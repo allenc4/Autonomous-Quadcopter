@@ -19,9 +19,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#pragma GCC diagnostic warning "-Wall"
-#pragma GCC diagnostic warning "-Wextra"
-#pragma GCC diagnostic warning "-Wlogical-op"
+//#pragma GCC diagnostic warning "-Wall"
+//#pragma GCC diagnostic warning "-Wextra"
+//#pragma GCC diagnostic warning "-Wlogical-op"
 #pragma GCC diagnostic ignored "-Wredundant-decls"
 
 // used to pack structures

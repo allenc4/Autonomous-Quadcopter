@@ -738,6 +738,7 @@ bool AP_Param::load(void)
     uint8_t idx;
     const struct AP_Param::Info *info = find_var_info(&group_element, &ginfo, &idx);
     if (info == NULL) {
+    	hal.console->println("var_info is NULL");
         // we don't have any info on how to load it
         return false;
     }

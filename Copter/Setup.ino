@@ -9,6 +9,8 @@
  */
 bool Init_Arducopter() {
 
+//	hal.storage->init(NULL);
+
 	// we don't want writes to the serial port to cause us to pause
 	// mid-flight, so set the serial ports non-blocking once we are
 	// ready to fly
@@ -48,6 +50,42 @@ bool Init_Arducopter() {
 	ins.init(AP_InertialSensor::COLD_START,
 			 AP_InertialSensor::RATE_100HZ,
 			 NULL);
+
+	if(!ins.calibrated()){
+		//flash the leds 3 times so we know it needs to be calibrated
+		for(int i = 0; i < 4; i++)
+		{
+			a_led->write(HAL_GPIO_LED_OFF);
+			b_led->write(HAL_GPIO_LED_OFF);
+			c_led->write(HAL_GPIO_LED_OFF);
+			hal.scheduler->delay(1000);
+			a_led->write(HAL_GPIO_LED_ON);
+			b_led->write(HAL_GPIO_LED_ON);
+			c_led->write(HAL_GPIO_LED_ON);
+			hal.scheduler->delay(1000);
+		}
+		// Initialize MPU6050 sensor
+		float roll_trim, pitch_trim;
+		AP_InertialSensor_UserInteractStream interact(hal.console);
+		if(!ins.calibrate_accel(NULL, &interact, roll_trim, pitch_trim)){
+			hal.scheduler->delay(500);
+			return false;
+		}
+	}
+
+	ins.push_accel_offsets_to_dmp();
+	ins.push_gyro_offsets_to_dmp();
+
+	//check if the accelerometer has been calibrated
+	//this will load the accel offsets from EEPORM
+	//this should not be called during flight as it reads
+	//from the eeprom and this is slow
+	if(!ins.calibrated())
+	{
+		hal.console->println("Accelerometer is not calibrated.  Please Calibrate Before Continuing");
+		return false;
+	}
+
 	ahrs.init();  // Internally calls MPU6050's internal sensor fusion (DigitalMotionProcessing)
 
 
