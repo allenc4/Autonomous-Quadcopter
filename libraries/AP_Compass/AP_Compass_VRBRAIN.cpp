@@ -15,15 +15,15 @@
  */
 
 /*
- *       AP_Compass_PX4.cpp - Arduino Library for PX4 magnetometer
+ *       AP_Compass_VRBRAIN.cpp - Arduino Library for VRBRAIN magnetometer
  *
  */
 
 
 #include <AP_HAL.h>
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
-#include "AP_Compass_PX4.h"
+#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+#include "AP_Compass_VRBRAIN.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -41,19 +41,17 @@ extern const AP_HAL::HAL& hal;
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-bool AP_Compass_PX4::init(void)
+bool AP_Compass_VRBRAIN::init(void)
 {
 	_mag_fd[0] = open(MAG_DEVICE_PATH, O_RDONLY);
-	_mag_fd[1] = open(MAG_DEVICE_PATH "1", O_RDONLY);
-	_mag_fd[2] = open(MAG_DEVICE_PATH "2", O_RDONLY);
-
+    _mag_fd[1] = open(MAG_DEVICE_PATH "1", O_RDONLY);
     _num_instances = 0;
     for (uint8_t i=0; i<COMPASS_MAX_INSTANCES; i++) {
         if (_mag_fd[i] >= 0) {
             _num_instances = i+1;
         }
-    }    
-	if (_num_instances == 0) {
+    }
+    if (_num_instances == 0) {
         hal.console->printf("Unable to open " MAG_DEVICE_PATH "\n");
         return false;
 	}
@@ -70,6 +68,11 @@ bool AP_Compass_PX4::init(void)
 
         // remember if the compass is external
         _is_external[i] = (ioctl(_mag_fd[i], MAGIOCGEXTERNAL, 0) > 0);
+#if defined(CONFIG_ARCH_BOARD_VRBRAIN_V45)
+		//deal with situations where user has cut internal mag on VRBRAIN 4.5 
+		//and uses only one external mag attached to the internal I2C bus
+		_is_external[i] = _external.load() ? _external.get() : _is_external[i];
+#endif
         if (_is_external[i]) {
             hal.console->printf("Using external compass[%u]\n", (unsigned)i);
         }
@@ -87,7 +90,7 @@ bool AP_Compass_PX4::init(void)
     return true;
 }
 
-bool AP_Compass_PX4::read(void)
+bool AP_Compass_VRBRAIN::read(void)
 {
     // try to accumulate one more sample, so we have the latest data
     accumulate();
@@ -108,9 +111,10 @@ bool AP_Compass_PX4::read(void)
         // a noop on most boards
         _sum[i].rotate(MAG_BOARD_ORIENTATION);
 
+#if !defined(CONFIG_ARCH_BOARD_VRBRAIN_V45)
         // override any user setting of COMPASS_EXTERNAL 
         _external.set(_is_external[0]);
-
+#endif
         if (_is_external[i]) {
             // add user selectable orientation
             _sum[i].rotate((enum Rotation)_orientation.get());
@@ -140,7 +144,7 @@ bool AP_Compass_PX4::read(void)
     return _healthy[get_primary()];
 }
 
-void AP_Compass_PX4::accumulate(void)
+void AP_Compass_VRBRAIN::accumulate(void)
 {
     struct mag_report mag_report;
     for (uint8_t i=0; i<_num_instances; i++) {
@@ -153,7 +157,7 @@ void AP_Compass_PX4::accumulate(void)
     }
 }
 
-uint8_t AP_Compass_PX4::get_primary(void) const
+uint8_t AP_Compass_VRBRAIN::get_primary(void) const
 {
     if (_primary < _num_instances && _healthy[_primary]) {
         return _primary;

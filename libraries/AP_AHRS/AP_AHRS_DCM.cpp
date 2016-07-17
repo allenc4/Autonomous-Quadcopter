@@ -4,7 +4,7 @@
  *
  *       AHRS system using DCM matrices
  *
- *       Based on DCM code by Doug Weibel, Jordi Muñoz and Jose Julio. DIYDrones.com
+ *       Based on DCM code by Doug Weibel, Jordi Muï¿½oz and Jose Julio. DIYDrones.com
  *
  *       Adapted for the general ArduPilot AHRS interface by Andrew Tridgell
  *
@@ -205,7 +205,7 @@ AP_AHRS_DCM::renorm(Vector3f const &a, Vector3f &result)
  *  to approximations rather than identities. In effect, the axes in the two frames of reference no
  *  longer describe a rigid body. Fortunately, numerical error accumulates very slowly, so it is a
  *  simple matter to stay ahead of it.
- *  We call the process of enforcing the orthogonality conditions ÒrenormalizationÓ.
+ *  We call the process of enforcing the orthogonality conditions ï¿½renormalizationï¿½.
  */
 void
 AP_AHRS_DCM::normalize(void)
@@ -234,26 +234,26 @@ AP_AHRS_DCM::normalize(void)
 float
 AP_AHRS_DCM::yaw_error_compass(void)
 {
-    Vector3f mag = Vector3f(_compass->mag_x, _compass->mag_y, _compass->mag_z);
-    // get the mag vector in the earth frame
-    Vector2f rb = _dcm_matrix.mulXY(mag);
+	  const Vector3f &mag = _compass->get_field();
+	// get the mag vector in the earth frame
+	Vector2f rb = _dcm_matrix.mulXY(mag);
 
-    rb.normalize();
-    if (rb.is_inf()) {
-        // not a valid vector
-        return 0.0;
-    }
+	rb.normalize();
+	if (rb.is_inf()) {
+		// not a valid vector
+		return 0.0;
+	}
 
-    // update vector holding earths magnetic field (if required)
-    if( _last_declination != _compass->get_declination() ) {
-        _last_declination = _compass->get_declination();
-        _mag_earth.x = cosf(_last_declination);
-        _mag_earth.y = sinf(_last_declination);
-    }
+	// update vector holding earths magnetic field (if required)
+	if( _last_declination != _compass->get_declination() ) {
+		_last_declination = _compass->get_declination();
+		_mag_earth.x = cosf(_last_declination);
+		_mag_earth.y = sinf(_last_declination);
+	}
 
-    // calculate the error term in earth frame
-    // calculate the Z component of the cross product of rb and _mag_earth
-    return rb % _mag_earth;
+	// calculate the error term in earth frame
+	// calculate the Z component of the cross product of rb and _mag_earth
+	return rb % _mag_earth;
 }
 
 // produce a yaw error value using the GPS. The returned value is proportional
