@@ -37,7 +37,7 @@ void Motors::output() {
 	// Get yaw/pitch/roll data from MPU6050 sensor and convert to degrees
 	float sensor_roll, sensor_pitch, sensor_yaw;
 
-	//this is just for yaw
+	//this is just for yaw until we use the compass
 	ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
 
 	//caluclate roll and pitch from raw accel data
@@ -45,12 +45,15 @@ void Motors::output() {
 	sensor_roll = 	atan(	accel.y / (sqrt(pow(accel.x, 2) + pow(accel.z, 2))));
 	sensor_pitch = 	atan(	accel.x / (sqrt(pow(accel.y, 2) + pow(accel.z, 2))));
 //	sensor_yaw = 	atan(	sqrt(pow(accel.x, 2) + pow(accel.y, 2)) / accel.z);
-//
 
-	// Convert everything to degrees
+//	 Convert everything to degreesh
 	sensor_roll  = -ToDeg(sensor_roll);
 	sensor_pitch = ToDeg(sensor_pitch);
 	sensor_yaw   = ToDeg(sensor_yaw);
+
+//	sensor_roll = ahrs.roll_sensor;
+//	sensor_pitch = ahrs.pitch_sensor;
+//	sensor_yaw = ahrs.yaw_sensor;
 
 	// Get rotational velocity data for each axis from the gyro and convert from rad/sec to deg
 	Vector3f gyro = ins.get_gyro();
@@ -113,42 +116,51 @@ void Motors::output() {
 		}
 
 
+		float desiredPitch = wrap_180_cd((float)rc_channels[RC_CHANNEL_PITCH] - sensor_pitch);
+		float desiredRoll = wrap_180_cd((float)rc_channels[RC_CHANNEL_ROLL]- sensor_roll);
+		float desiredYaw = wrap_180_cd(target_yaw - sensor_yaw);
+
+		desiredPitch = constrain_int32(desiredPitch, -4500, 4500);
+		desiredRoll = constrain_int32(desiredRoll, -4500, 4500);
+		desiredYaw = constrain_int32(desiredYaw, -4500, 4500);
 
 		// Stability PIDS
 		float stab_output_pitch = constrain_float(
-				pids[PID_PITCH_STAB].get_pid((float)rc_channels[RC_CHANNEL_PITCH] - sensor_pitch, 1),
+				pids[PID_PITCH_STAB].get_pid(desiredPitch, 1),
 				-250,
 				250);
 		float stab_output_roll = constrain_float(
-				pids[PID_ROLL_STAB].get_pid((float)rc_channels[RC_CHANNEL_ROLL] - sensor_roll, 1),
+				pids[PID_ROLL_STAB].get_pid(desiredRoll, 1),
 				-250,
 				250);
 		float stab_output_yaw = constrain_float(
-				pids[PID_YAW_STAB].get_pid(wrap_180(target_yaw - sensor_yaw), 1),
+				pids[PID_YAW_STAB].get_pid(desiredYaw, 1),
 				-360,
 				360);
 
 		// If controller asks for yaw change, overwrite stab_output for the yaw value
 		// Yaw value will be between -150 and 150 so if there is a radio value greater than a 5
 		// degree offset, rotate
-		if (abs(rc_channels[RC_CHANNEL_YAW]) > 5) {
+		if (abs(rc_channels[RC_CHANNEL_YAW]) > 10) {
 			stab_output_yaw = rc_channels[RC_CHANNEL_YAW];
 			target_yaw = sensor_yaw; // remember for when radio stops
 		}
 
 //		// Acrobatic/Rate PIDS
 		long pitch_output = (long) constrain_int16(
-				pids[PID_PITCH_RATE].get_pid(stab_output_pitch - gyro_pitch, 1),
+				pids[PID_PITCH_RATE].get_pid((stab_output_pitch * ACRO_PITCH_RATE) - gyro_pitch, 1),
 				-500,
 				500);
 		long roll_output  = (long) constrain_int16(
-				pids[PID_ROLL_RATE].get_pid(stab_output_roll - gyro_roll, 1),
+				pids[PID_ROLL_RATE].get_pid((stab_output_roll * ACRO_ROLL_RATE) - gyro_roll, 1),
 				-500,
 				500);
 		long yaw_output   = (long) constrain_int16(
-				pids[PID_YAW_RATE].get_pid(stab_output_yaw - gyro_yaw, 1),
+				pids[PID_YAW_RATE].get_pid((stab_output_yaw * ACRO_YAW_RATE) - gyro_yaw, 1),
 				-500,
 				500);
+
+		yaw_output = 0;
 
 		// Only worry about yaw change if the pitch and roll values are semi-stable first.
 		// We want the multirotor level before we make any yaw adjustments.
@@ -163,10 +175,17 @@ void Motors::output() {
 //		long roll_output  =   pids[PID_ROLL_RATE].get_pid(rc_channels[RC_CHANNEL_ROLL] - gyro_roll, 1);
 //		long yaw_output   =   pids[PID_YAW_RATE].get_pid(rc_channels[RC_CHANNEL_YAW] - gyro_yaw, 1);
 
-		output(MOTOR_FL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output - yaw_output);
-		output(MOTOR_BL, rc_channels[RC_CHANNEL_THROTTLE] + roll_output - pitch_output + yaw_output);
-		output(MOTOR_FR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output + pitch_output + yaw_output);
-		output(MOTOR_BR, rc_channels[RC_CHANNEL_THROTTLE] - roll_output - pitch_output - yaw_output);
+
+		long motorFLCorrection = (MOTOR_FL_ROLL_FACTOR * roll_output) + (MOTOR_FL_PITCH_FACTOR * pitch_output) + (MOTOR_FL_YAW_FACTOR * yaw_output);
+		long motorBLCorrection = (MOTOR_BL_ROLL_FACTOR * roll_output) + (MOTOR_BL_PITCH_FACTOR * pitch_output) + (MOTOR_BL_YAW_FACTOR * yaw_output);
+		long motorFRCorrection = (MOTOR_FR_ROLL_FACTOR * roll_output) + (MOTOR_FR_PITCH_FACTOR * pitch_output) + (MOTOR_FR_YAW_FACTOR * yaw_output);
+		long motorBRCorrection = (MOTOR_BR_ROLL_FACTOR * roll_output) + (MOTOR_BR_PITCH_FACTOR * pitch_output) + (MOTOR_BR_YAW_FACTOR * yaw_output);
+
+
+		output(MOTOR_FL, rc_channels[RC_CHANNEL_THROTTLE] + motorFLCorrection);
+		output(MOTOR_BL, rc_channels[RC_CHANNEL_THROTTLE] + motorBLCorrection);
+		output(MOTOR_FR, rc_channels[RC_CHANNEL_THROTTLE] + motorFRCorrection);
+		output(MOTOR_BR, rc_channels[RC_CHANNEL_THROTTLE] + motorBRCorrection);
 
 		// Print out the sensor yaw/pitch/roll data in degrees
 		if (DEBUG == ENABLED)
@@ -198,15 +217,19 @@ void Motors::output() {
 						rc_channels[RC_CHANNEL_PITCH],
 						rc_channels[RC_CHANNEL_ROLL],
 						rc_channels[RC_CHANNEL_YAW]);
+//								hal.console->printf("RC throt: %li\t",
+//										rc_channels[RC_CHANNEL_THROTTLE]);
 				hal.console->printf("Accel Pitch: %4.1f\t Roll: %4.1f\t Yaw: %4.1f\t",
 						sensor_pitch, sensor_roll, sensor_yaw);
 				hal.console->printf("Gyro Pitch: %4.1f\t Roll: %4.1f\t Yaw: %4.1f\t",
 						gyro_pitch, gyro_roll, gyro_yaw);
 				hal.console->printf("pitch_output: %li\t roll_output: %li\t yaw_output: %li\t",
 						pitch_output, roll_output, yaw_output);
-				hal.console->printf("OUTPUT: %ld\n", (rc_channels[RC_CHANNEL_THROTTLE] + roll_output + pitch_output - yaw_output) );
-
-
+				hal.console->printf("target_yaw: %4.2f\t", target_yaw);
+				hal.console->printf("FL: %ld\t", (rc_channels[RC_CHANNEL_THROTTLE] + motorFLCorrection) );
+				hal.console->printf("BL: %ld\t", (rc_channels[RC_CHANNEL_THROTTLE] + motorBLCorrection) );
+				hal.console->printf("FR: %ld\t", (rc_channels[RC_CHANNEL_THROTTLE] + motorFRCorrection) );
+				hal.console->printf("BR: %ld\n", (rc_channels[RC_CHANNEL_THROTTLE] + motorBRCorrection) );
 			}
 		} // End if - DEBUG_ENABLED
 

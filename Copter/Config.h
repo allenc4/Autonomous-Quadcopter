@@ -119,34 +119,58 @@
 #define RC_FAST_SPEED       490
 #define RC_SLOW_SPEED		50
 
+//increases or decreases the speed of rotation on each axis
+//should be a value between 1 and 10
+#define  ACRO_PITCH_RATE 1
+#define  ACRO_ROLL_RATE 1
+#define  ACRO_YAW_RATE 1
+
+
+//this is the degree of the motor + 90 and then some trig
+#define MOTOR_FL_ROLL_FACTOR 	 0.707
+#define MOTOR_FL_PITCH_FACTOR 	 0.707
+#define MOTOR_FL_YAW_FACTOR 	 1
+
+#define MOTOR_BL_ROLL_FACTOR 	 0.707
+#define MOTOR_BL_PITCH_FACTOR 	-0.707
+#define MOTOR_BL_YAW_FACTOR 	 -1
+
+#define MOTOR_FR_ROLL_FACTOR 	-0.707
+#define MOTOR_FR_PITCH_FACTOR 	 0.707
+#define MOTOR_FR_YAW_FACTOR 	 -1
+
+#define MOTOR_BR_ROLL_FACTOR 	-0.707
+#define MOTOR_BR_PITCH_FACTOR 	-0.707
+#define MOTOR_BR_YAW_FACTOR 	 1
+
 
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
-#define MASTER_P				0.5f
-#define	MASTER_I				0//0.1f
-#define MASTER_D				0//0.004f
-#define MASTER_IMAX				0//500
+#define MASTER_P				2.25f//0.15f
+#define	MASTER_I				0.0f//1.0f//0.1f
+#define MASTER_D				0.0f//0.4f//0.004f
+#define MASTER_IMAX				0.0f//500
 
 #define PID_PITCH_RATE 			0
-#define 	PITCH_RATE_P		MASTER_P
+#define 	PITCH_RATE_P		2.25
 #define		PITCH_RATE_I		MASTER_I
 #define		PITCH_RATE_D		MASTER_D
 #define		PITCH_RATE_I_MAX	MASTER_IMAX
 
 #define PID_ROLL_RATE 			1
-#define		ROLL_RATE_P			MASTER_P
+#define		ROLL_RATE_P			2.5
 #define		ROLL_RATE_I			MASTER_I
 #define		ROLL_RATE_D			MASTER_D
 #define 	ROLL_RATE_I_MAX		MASTER_IMAX
 
 #define PID_YAW_RATE 			2
-#define		YAW_RATE_P			0.2f
-#define		YAW_RATE_I			0.02f
-#define		YAW_RATE_D			0
-#define		YAW_RATE_I_MAX		0
+#define		YAW_RATE_P			1.5f
+#define		YAW_RATE_I			0.0f
+#define		YAW_RATE_D			0.0f
+#define		YAW_RATE_I_MAX		0.0f
 
-#define MASTER_STAB_P			4.5f
+#define MASTER_STAB_P			2.0f
 // Only P values needed for stability
 #define PID_PITCH_STAB 			3
 #define		PITCH_STAB_P		MASTER_STAB_P

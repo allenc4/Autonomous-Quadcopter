@@ -53,7 +53,7 @@ static void update_trig();
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 // ArduPilot Hardware Abstraction Layer (HAL)
-const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
+const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
 
 extern const AP_Param::Info var_info[];
 AP_Param param_loader(var_info, HAL_STORAGE_SIZE);
@@ -124,6 +124,11 @@ uint32_t mediumLoopLastExecute = 0;
 uint32_t slowLoopExecute = 1000;		
 //last time we executed the slow loop
 uint32_t slowLoopLastExecute = 0;		
+
+uint32_t fastLoopTimer = 0;
+
+//Integration time for pids
+float Gd_t = 0.02;
 
 void setup()
 {
@@ -277,6 +282,12 @@ void loop()
 
 // Main loop - 100hz
 static void fast_loop() {
+
+	//update the Gd_t integration time
+	uint32_t timer = hal.scheduler->micros();
+	Gd_t = (float)(fastLoopTimer - timer) / 1000000.0f;
+	fastLoopTimer = timer;
+
     // IMU DCM Algorithm
     ahrs.update();
 	ins.update();
@@ -329,6 +340,29 @@ static void fast_loop() {
 //		rc_channels[RC_CHANNEL_ROLL] = 0;
 //		rc_channels[RC_CHANNEL_PITCH] = 0;
 //		rc_channels[RC_CHANNEL_YAW] = 0;
+
+	//fixes any fuck ups in the transmitter
+	if(rc_channels[RC_CHANNEL_ROLL] > 10)
+	{
+		rc_channels[RC_CHANNEL_ROLL] -= 10;
+	}else{
+		rc_channels[RC_CHANNEL_ROLL] = 0;
+	}
+
+	if(rc_channels[RC_CHANNEL_PITCH] > 10)
+	{
+		rc_channels[RC_CHANNEL_PITCH] -= 10;
+	}else{
+		rc_channels[RC_CHANNEL_PITCH] = 0;
+	}
+
+	if(rc_channels[RC_CHANNEL_YAW] > 15)
+	{
+		rc_channels[RC_CHANNEL_YAW] -= 15;
+	}else{
+		rc_channels[RC_CHANNEL_YAW] = 0;
+	}
+
 
 	if((rc_channels[RC_CHANNEL_THROTTLE] <= RC_THROTTLE_MIN + 75 && rc_channels[RC_CHANNEL_YAW] > (RC_YAW_MAX_SCALED - 25)))
 	{
@@ -391,6 +425,7 @@ static void fast_loop() {
 #endif
 #endif
 
+//	motor_Test();
 	// Output throttle response to motors
 	motors.output();
 }
