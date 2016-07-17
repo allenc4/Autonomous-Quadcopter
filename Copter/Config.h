@@ -28,6 +28,8 @@
 #define OPTFLOW					DISABLED
 
 //modes
+//the time needed to hold controller in certain position to
+//change the mode
 #define MODE_SELECT_TIME		5000
 #define NO_MODE					0
 #define ACCEL_CALIBRATE_MODE 	1
@@ -147,19 +149,19 @@
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
-#define MASTER_P				2.25f//0.15f
-#define	MASTER_I				0.0f//1.0f//0.1f
-#define MASTER_D				0.0f//0.4f//0.004f
+#define MASTER_P				6.0f//2.5f - ok //0.15f - ardu default
+#define	MASTER_I				0.0f//0.1f
+#define MASTER_D				0.0f//0.004f
 #define MASTER_IMAX				0.0f//500
 
 #define PID_PITCH_RATE 			0
-#define 	PITCH_RATE_P		2.25
+#define 	PITCH_RATE_P		MASTER_P
 #define		PITCH_RATE_I		MASTER_I
 #define		PITCH_RATE_D		MASTER_D
 #define		PITCH_RATE_I_MAX	MASTER_IMAX
 
 #define PID_ROLL_RATE 			1
-#define		ROLL_RATE_P			2.5
+#define		ROLL_RATE_P			MASTER_P
 #define		ROLL_RATE_I			MASTER_I
 #define		ROLL_RATE_D			MASTER_D
 #define 	ROLL_RATE_I_MAX		MASTER_IMAX
@@ -170,7 +172,7 @@
 #define		YAW_RATE_D			0.0f
 #define		YAW_RATE_I_MAX		0.0f
 
-#define MASTER_STAB_P			2.0f
+#define MASTER_STAB_P			4.5f
 // Only P values needed for stability
 #define PID_PITCH_STAB 			3
 #define		PITCH_STAB_P		MASTER_STAB_P
