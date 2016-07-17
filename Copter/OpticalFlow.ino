@@ -10,12 +10,12 @@ OpticalFlow::OpticalFlow(RangeFinder *rf) {
 	pids_optflow[PID_OPTFLOW_PITCH].kP(OPTFLOW_PITCH_P);
 	pids_optflow[PID_OPTFLOW_PITCH].kI(OPTFLOW_PITCH_I);
 	pids_optflow[PID_OPTFLOW_PITCH].kD(OPTFLOW_PITCH_D);
-	pids_optflow[PID_OPTFLOW_PITCH].imax(OPTFLOW_I_MAX);
+	pids_optflow[PID_OPTFLOW_PITCH].imax(OPTFLOW_IMAX);
 
 	pids_optflow[PID_OPTFLOW_ROLL].kP(OPTFLOW_ROLL_P);
 	pids_optflow[PID_OPTFLOW_ROLL].kI(OPTFLOW_ROLL_I);
 	pids_optflow[PID_OPTFLOW_ROLL].kD(OPTFLOW_ROLL_D);
-	pids_optflow[PID_OPTFLOW_ROLL].imax(OPTFLOW_I_MAX);
+	pids_optflow[PID_OPTFLOW_ROLL].imax(OPTFLOW_IMAX);
 }
 
 bool OpticalFlow::init() {

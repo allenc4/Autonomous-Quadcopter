@@ -30,13 +30,16 @@
 #include <AP_HAL_AVR.h>
 #include <GPIO.h>
 
+#include <AP_Curve.h>
+#include <APM_PI.h>
 #include <AC_PID.h>
 #include <PID.h>
+#include <RC_Channel.h>         // RC Channel Library
+
+#include <AP_Motors.h>
 
 #include <memcheck.h>           // memory limit checker
 #include <AP_Scheduler.h>       // main loop scheduler
-
-
 
 // Local includes
 #include "Config.h"
@@ -58,15 +61,29 @@ const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
 extern const AP_Param::Info var_info[];
 AP_Param param_loader(var_info, HAL_STORAGE_SIZE);
 
-static Parameters g;
+Parameters g;
 
 // MPU6050 accel/gyro chip
 AP_InertialSensor_MPU6000 ins;
 GPS *gps;  // Not formally used in this code. Only declared to create AHRS object
 AP_AHRS_MPU6000 ahrs(&ins, gps);
 
+// Vector that holds gyro data
+Vector3f gyroVals;
+
 // Orientation
 AP_Compass_HMC5843 compass;
+
+////////////////////////////////////////////////////////////////////////////////
+// Rate contoller targets
+////////////////////////////////////////////////////////////////////////////////
+uint8_t rate_targets_frame = EARTH_FRAME;    // indicates whether rate targets provided in earth or body frame
+int32_t roll_rate_target_ef;
+int32_t pitch_rate_target_ef;
+int32_t yaw_rate_target_ef;
+int32_t roll_rate_target_bf;     // body frame roll rate target
+int32_t pitch_rate_target_bf;    // body frame pitch rate target
+int32_t yaw_rate_target_bf;      // body frame yaw rate target
 ////////////////////////////////////////////////////////////////////////////////
 // Convenience accessors for commonly used trig functions. These values are generated
 // by the DCM through a few simple equations.
@@ -78,6 +95,12 @@ float sin_yaw;
 float sin_roll;
 float sin_pitch;
 
+////////////////////////////////////////////////////////////////////////////////
+// SIMPLE Mode
+////////////////////////////////////////////////////////////////////////////////
+static int16_t control_roll;
+static int16_t control_pitch;
+
 uint32_t lastModeSelectTime;
 uint32_t modeSelectTimer;
 int lastMode;
@@ -86,7 +109,12 @@ int lastMode;
 float trim_roll, trim_pitch;
 
 // RC receiver channel values
-long rc_channels[8];
+RC_Channel rc_channels[] = {
+		RC_Channel(RC_CHANNEL_ROLL),
+		RC_Channel(RC_CHANNEL_PITCH),
+		RC_Channel(RC_CHANNEL_THROTTLE),
+		RC_Channel(RC_CHANNEL_YAW)
+};
 
 PID pids[6];
 
@@ -101,7 +129,12 @@ OpticalFlow opticalFlow(lidar);
 #endif
 
 // Set up Motors instance to control all motors
-Motors motors;
+//Motors motors;
+AP_MotorsQuad motors(&rc_channels[RC_CHANNEL_ROLL],
+		&rc_channels[RC_CHANNEL_PITCH],
+		&rc_channels[RC_CHANNEL_THROTTLE],
+		&rc_channels[RC_CHANNEL_YAW]);
+
 
 // The Commanded ROll based on optical flow sensor.
 int32_t of_roll;
@@ -117,6 +150,8 @@ AP_HAL::DigitalSource *c_led;
 uint32_t loop_count;
 
 // System Timers
+uint32_t G_Dt;
+uint32_t fastLoopTimer = 0;
 //timer for how often medium loop should be executed
 uint32_t mediumLoopExecute = 500;		
 //last time we executed the medium loop
@@ -128,8 +163,6 @@ uint32_t slowLoopLastExecute = 0;
 
 void setup()
 {
-
-
 	// this needs to be the first call, as it fills memory with sentinel values
 	memcheck_init();
 	//load parameters from eeprom
@@ -137,6 +170,7 @@ void setup()
 	Parameters::load_parameters();
 
 	loop_count = 0;
+
 
 	// Initialize PID array
 	pids[PID_PITCH_RATE].kP(PITCH_RATE_P);
@@ -162,7 +196,7 @@ void setup()
 	// If we are calibrating ESCs, do that now
 	if (ESC_CALIBRATE == ENABLED) {
 		hal.console->println("Entering ESC calibration now....");
-		motors.calibrate_ESCs();
+//		motors.calibrate_ESCs();
 	}
 
 	if (!Init_Arducopter()) {
@@ -185,7 +219,8 @@ void setup()
 	// (multirotor is not moving and gyro sensor data is initialized)
 	hal.console->println("Waiting for roll, pitch, and yaw values to stabilize...");
 
-	bool sensorsReady = false;
+	// TODO - change to false
+	bool sensorsReady = true;
 	float prev_sensor_roll = EMPTY, prev_sensor_pitch = EMPTY, prev_sensor_yaw = EMPTY;
 
 	while (!sensorsReady) {
@@ -233,10 +268,14 @@ void setup()
 
 	}
 
-	motors.init_yaw();
+//	motors.init_yaw();
 
 //	accel_calibration();
 
+	// Setup RC receiver
+	Setup_RC_Channels();
+
+	// Setup motors for output
 	Setup_Motors();
 
 	// Turn on green/blue light
@@ -278,39 +317,42 @@ void loop()
 
 // Main loop - 100hz
 static void fast_loop() {
+
+    G_Dt = (float)(hal.scheduler->micros() - fastLoopTimer) / 1000000.f;
+    fastLoopTimer = hal.scheduler->micros();
     // IMU DCM Algorithm
     ahrs.update();
 	ins.update();
 
 	update_trig();
 
-	// Get RC values
-	uint16_t channels[8];
-	hal.rcin->read(channels, 8);
 
-	// Scale the yaw, roll, and pitch values in the rc_channels array
-	rc_channels[RC_CHANNEL_YAW] = map(
-			channels[RC_CHANNEL_YAW],
-			RC_YAW_MIN,
-			RC_YAW_MAX,
-			RC_YAW_MIN_SCALED,
-			RC_YAW_MAX_SCALED);
-
-	rc_channels[RC_CHANNEL_ROLL] = map(
-			channels[RC_CHANNEL_ROLL],
-			RC_ROLL_MIN,
-			RC_ROLL_MAX,
-			RC_ROLL_MIN_SCALED,
-			RC_ROLL_MAX_SCALED);
-
-	rc_channels[RC_CHANNEL_PITCH] = -map(
-			channels[RC_CHANNEL_PITCH],
-			RC_PITCH_MIN,
-			RC_PITCH_MAX,
-			RC_PITCH_MIN_SCALED,
-			RC_PITCH_MAX_SCALED);
-
-	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
+//	uint16_t channels[8];
+//	hal.rcin->read(channels, 8);
+//
+//	// Scale the yaw, roll, and pitch values in the rc_channels array
+//	rc_channels[RC_CHANNEL_YAW] = map(
+//			channels[RC_CHANNEL_YAW],
+//			RC_YAW_MIN,
+//			RC_YAW_MAX,
+//			RC_YAW_MIN_SCALED,
+//			RC_YAW_MAX_SCALED);
+//
+//	rc_channels[RC_CHANNEL_ROLL] = map(
+//			channels[RC_CHANNEL_ROLL],
+//			RC_ROLL_MIN,
+//			RC_ROLL_MAX,
+//			RC_ROLL_MIN_SCALED,
+//			RC_ROLL_MAX_SCALED);
+//
+//	rc_channels[RC_CHANNEL_PITCH] = -map(
+//			channels[RC_CHANNEL_PITCH],
+//			RC_PITCH_MIN,
+//			RC_PITCH_MAX,
+//			RC_PITCH_MIN_SCALED,
+//			RC_PITCH_MAX_SCALED);
+//
+//	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
 
 //	if (DEBUG == ENABLED) {
 //		if (loop_count % 20 == 0) {
@@ -331,7 +373,8 @@ static void fast_loop() {
 //		rc_channels[RC_CHANNEL_PITCH] = 0;
 //		rc_channels[RC_CHANNEL_YAW] = 0;
 
-	if((rc_channels[RC_CHANNEL_THROTTLE] <= RC_THROTTLE_MIN + 75 && rc_channels[RC_CHANNEL_YAW] > (RC_YAW_MAX_SCALED - 25)))
+	if((rc_channels[RC_CHANNEL_THROTTLE].radio_in <= RC_THROTTLE_MIN + 75 &&
+			rc_channels[RC_CHANNEL_YAW].radio_in > (RC_YAW_MAX_SCALED - 25)))
 	{
 		if(lastMode != ACCEL_CALIBRATE_MODE)
 		{
@@ -376,6 +419,48 @@ static void fast_loop() {
 		modeSelectTimer = 0;
 	}
 
+	// run low level rate controllers that only require IMU data
+	run_rate_controllers();
+
+	// output to motors
+	motors.output();
+	if (DEBUG == ENABLED && loop_count % 20 == 0) {
+		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\n",
+				motors.motor_out[2],
+				motors.motor_out[0],
+				motors.motor_out[1],
+				motors.motor_out[3]);
+	}
+
+	// Read RC values
+	uint16_t periods[8];
+	hal.rcin->read(periods, RC_CHANNEL_MAX+1);
+
+	for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
+		rc_channels[i].set_pwm(periods[i]);
+	}
+
+	// Update the servo_out for the throttle
+	if (periods[RC_CHANNEL_THROTTLE] < RC_THROTTLE_MIN + 50) {
+		set_throttle_out(0);
+	} else {
+		set_throttle_out(map(
+				periods[RC_CHANNEL_THROTTLE],
+				RC_THROTTLE_MIN,
+				RC_THROTTLE_MAX,
+				0,
+				1000));
+	}
+
+	// apply simple mode
+	control_roll            = rc_channels[RC_CHANNEL_ROLL].control_in;
+	control_pitch           = rc_channels[RC_CHANNEL_PITCH].control_in;
+
+	get_stabilize_roll(control_roll);
+	get_stabilize_pitch(control_pitch);
+
+	// update targets to rate controllers
+	update_rate_contoller_targets();
 
 
 	// Update readings from LIDAR and Optical Flow sensors
@@ -446,6 +531,8 @@ static void update_trig() {
     // 90° = cos_yaw:  0.00, sin_yaw:  1.00,
     // 180 = cos_yaw: -1.00, sin_yaw:  0.00,
     // 270 = cos_yaw:  0.00, sin_yaw: -1.00,
+
+    gyroVals = ins.get_gyro();
 }
 
 AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).

@@ -121,6 +121,8 @@ void AP_MotorsMatrix::output_armed()
     _rc_throttle->calc_pwm();
     _rc_yaw->calc_pwm();
 
+    hal.console->println(_rc_throttle->servo_out);
+
     // if we are not sending a throttle output, we cut the motors
     if (_rc_throttle->servo_out == 0) {
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
