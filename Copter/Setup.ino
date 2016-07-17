@@ -130,6 +130,15 @@ bool Init_Arducopter() {
 
 #endif // LIDAR == ENABLED
 
+	// Initialize compass
+	if (!compass.init()) {
+		hal.console->println("compass initialisation failed!");
+		return false;
+	} else {
+//		compass.set_offsets(0,0,0); // set offsets to account for surrounding interference
+//		compass.set_declination(ToRad(0.0)); // set local difference between magnetic north and true north
+	}
+
 
 
 //	hal.scheduler->delay(50);

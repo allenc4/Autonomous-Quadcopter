@@ -31,7 +31,9 @@ public:
         _mpu6000(mpu6000),
         // dmp related variable initialisation
         _compass_bias_time(0),
-        _gyro_bias_from_gravity_gain(0.008)
+        _gyro_bias_from_gravity_gain(0.008),
+		_last_declination(0),
+		_mag_earth(1,0)
     {
         _dcm_matrix.identity();
     }
@@ -114,6 +116,10 @@ private:
     float _error_yaw_last;
 
     bool _secondary_ahrs;
+
+    // the earths magnetic field
+	float _last_declination;
+	Vector2f _mag_earth;
 };
 
 #endif // __AP_AHRS_MPU6000_H__

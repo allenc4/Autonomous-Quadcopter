@@ -1,15 +1,15 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#ifndef AP_Compass_PX4_H
-#define AP_Compass_PX4_H
+#ifndef AP_Compass_VRBRAIN_H
+#define AP_Compass_VRBRAIN_H
 
 #include "Compass.h"
 
-class AP_Compass_PX4 : public Compass
+class AP_Compass_VRBRAIN : public Compass
 {
 public:
-    AP_Compass_PX4() : Compass() {
-        product_id = AP_COMPASS_TYPE_PX4;
+    AP_Compass_VRBRAIN() : Compass() {
+        product_id = AP_COMPASS_TYPE_VRBRAIN;
         _num_instances = 0;
     }
     bool        init(void);
@@ -31,5 +31,5 @@ private:
     bool _is_external[COMPASS_MAX_INSTANCES];
 };
 
-#endif // AP_Compass_PX4_H
+#endif // AP_Compass_VRBRAIN_H
 

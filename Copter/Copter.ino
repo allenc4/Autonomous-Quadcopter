@@ -66,6 +66,7 @@ GPS *gps;  // Not formally used in this code. Only declared to create AHRS objec
 AP_AHRS_MPU6000 ahrs(&ins, gps);
 
 // Orientation
+AP_Compass_HMC5843 compass;
 ////////////////////////////////////////////////////////////////////////////////
 // Convenience accessors for commonly used trig functions. These values are generated
 // by the DCM through a few simple equations.
