@@ -447,11 +447,11 @@ static void fast_loop() {
 	// output to motors
 	motors.output();
 	if (DEBUG == ENABLED && loop_count % 20 == 0) {
-		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\t",
-				motors.motor_out[2],
-				motors.motor_out[0],
-				motors.motor_out[1],
-				motors.motor_out[3]);
+//		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\t",
+//				motors.motor_out[2],
+//				motors.motor_out[0],
+//				motors.motor_out[1],
+//				motors.motor_out[3]);
 		hal.console->printf("RCTCI: %d\t RCTRI: %d\t", rc_channels[RC_CHANNEL_THROTTLE].control_in, rc_channels[RC_CHANNEL_THROTTLE].radio_in);
 		hal.console->printf("RCPCI: %d\t RCPRI: %d\t", rc_channels[RC_CHANNEL_PITCH].control_in, rc_channels[RC_CHANNEL_PITCH].radio_in);
 		hal.console->printf("RCRCI: %d\t RCRRI: %d\n", rc_channels[RC_CHANNEL_ROLL].control_in, rc_channels[RC_CHANNEL_ROLL].radio_in);
@@ -467,14 +467,14 @@ static void fast_loop() {
 
 	// Update the servo_out for the throttle
 	if (periods[RC_CHANNEL_THROTTLE] < RC_THROTTLE_MIN + 50) {
-		set_throttle_out(0);
+		attitude.set_throttle_out(0, false);
 	} else {
-		set_throttle_out(map(
+		attitude.set_throttle_out(map(
 				periods[RC_CHANNEL_THROTTLE],
 				RC_THROTTLE_MIN,
 				RC_THROTTLE_MAX,
 				0,
-				1000));
+				1000), true);
 	}
 
 	// apply simple mode
