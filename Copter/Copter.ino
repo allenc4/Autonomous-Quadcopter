@@ -346,6 +346,9 @@ static void fast_loop() {
 	if(rc_channels[RC_CHANNEL_ROLL] > 10)
 	{
 		rc_channels[RC_CHANNEL_ROLL] -= 10;
+	}else if(rc_channels[RC_CHANNEL_ROLL] < 10)
+	{
+		rc_channels[RC_CHANNEL_ROLL] += 10;
 	}else{
 		rc_channels[RC_CHANNEL_ROLL] = 0;
 	}
@@ -353,6 +356,9 @@ static void fast_loop() {
 	if(rc_channels[RC_CHANNEL_PITCH] > 10)
 	{
 		rc_channels[RC_CHANNEL_PITCH] -= 10;
+	}else if(rc_channels[RC_CHANNEL_PITCH] < 10)
+	{
+		rc_channels[RC_CHANNEL_PITCH] += 10;
 	}else{
 		rc_channels[RC_CHANNEL_PITCH] = 0;
 	}
@@ -360,6 +366,9 @@ static void fast_loop() {
 	if(rc_channels[RC_CHANNEL_YAW] > 15)
 	{
 		rc_channels[RC_CHANNEL_YAW] -= 15;
+	}else if(rc_channels[RC_CHANNEL_YAW] < 10)
+	{
+		rc_channels[RC_CHANNEL_YAW] += 10;
 	}else{
 		rc_channels[RC_CHANNEL_YAW] = 0;
 	}

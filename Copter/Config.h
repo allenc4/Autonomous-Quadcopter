@@ -149,10 +149,10 @@
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control
 //
-#define MASTER_P				6.0f//2.5f - ok //0.15f - ardu default
-#define	MASTER_I				0.0f//0.1f
+#define MASTER_P				2.5f //0.15f - ardu default
+#define	MASTER_I				1.0f//0.1f
 #define MASTER_D				0.0f//0.004f
-#define MASTER_IMAX				0.0f//500
+#define MASTER_IMAX				100
 
 #define PID_PITCH_RATE 			0
 #define 	PITCH_RATE_P		MASTER_P
