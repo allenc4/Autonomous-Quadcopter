@@ -227,11 +227,13 @@ void stabilize_run()
 			target_pitch);
 
 #if DEBUG == ENABLED
-    hal.console->printf("RCRollCi: %d\t RollTarg: %d\t RCPitCi: %d\t PitTarg: %d\t",
-    		rc_channels[RC_CHANNEL_ROLL].control_in,
-			target_roll,
-			rc_channels[RC_CHANNEL_PITCH].control_in,
-			target_pitch);
+    if (loop_count % 20 == 0) {
+		hal.console->printf("RCRollCi: %d\t RollTarg: %d\t RCPitCi: %d\t PitTarg: %d\t",
+				rc_channels[RC_CHANNEL_ROLL].control_in,
+				target_roll,
+				rc_channels[RC_CHANNEL_PITCH].control_in,
+				target_pitch);
+    }
 #endif
 
     // get pilot's desired yaw rate
@@ -239,9 +241,11 @@ void stabilize_run()
     		rc_channels[RC_CHANNEL_YAW].control_in);
 
 #if DEBUG == ENABLED
-    hal.console->printf("RCYawCi: %d\t YawTarg: %d\t",
-    		rc_channels[RC_CHANNEL_YAW].control_in,
-			target_yaw_rate);
+    if (loop_count % 20 == 0) {
+		hal.console->printf("RCYawCi: %d\t YawTarg: %d\t",
+				rc_channels[RC_CHANNEL_YAW].control_in,
+				target_yaw_rate);
+    }
 #endif
 
     // get pilot's desired throttle
@@ -249,9 +253,11 @@ void stabilize_run()
     		rc_channels[RC_CHANNEL_THROTTLE].control_in);
 
 #if DEBUG == ENABLED
-    hal.console->printf("RCThrotCi: %d\t ThrotTarg: %d\n",
-    		rc_channels[RC_CHANNEL_THROTTLE].control_in,
-			pilot_throttle_scaled);
+    if (loop_count % 20 == 0) {
+		hal.console->printf("RCThrotCi: %d\t ThrotTarg: %d\n",
+				rc_channels[RC_CHANNEL_THROTTLE].control_in,
+				pilot_throttle_scaled);
+    }
 #endif
 
     // call attitude controller
