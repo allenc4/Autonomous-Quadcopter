@@ -35,7 +35,7 @@ AP_OpticalFlow_ADNS3080::AP_OpticalFlow_ADNS3080()
 // init - initialise sensor
 // assumes SPI bus has been initialised but will attempt to initialise 
 // nonstandard SPI3 bus if required
-bool AP_OpticalFlow_ADNS3080::init()
+void AP_OpticalFlow_ADNS3080::init()
 {
     int8_t retry = 0;
     _flags.healthy = false;
@@ -52,9 +52,7 @@ bool AP_OpticalFlow_ADNS3080::init()
                 _flags.healthy = true;
             }
             retry++;
-            hal.console->println("SPI0 used");
         }
-
     }
 
     // if not yet found, get pointer to the SPI3 bus
@@ -69,9 +67,7 @@ bool AP_OpticalFlow_ADNS3080::init()
                 }
                 retry++;
             }
-            hal.console->println("SPI3 used");
         }
-
     }
 
     // configure the sensor
@@ -99,9 +95,8 @@ bool AP_OpticalFlow_ADNS3080::init()
         // update scalers
         update_conversion_factors();
 
-//        AP_HAL::TimedProc timedProc = AP_OpticalFlow_ADNS3080::read;
         // register the global static read function to be called at 1khz
-//        hal.scheduler->register_timer_process(timedProc);
+        hal.scheduler->register_timer_process(AP_HAL_MEMBERPROC(&AP_OpticalFlow_ADNS3080::read));
     }else{
         // no connection available.
         _spi = NULL;
@@ -109,7 +104,6 @@ bool AP_OpticalFlow_ADNS3080::init()
 
     // resume timer
     hal.scheduler->resume_timer_procs();
-    return _flags.healthy;
 }
 
 // Read a register from the sensor
@@ -181,26 +175,22 @@ void AP_OpticalFlow_ADNS3080::write_register(uint8_t address, uint8_t value)
 void AP_OpticalFlow_ADNS3080::update(void)
 {
     uint8_t motion_reg;
-    int16_t  raw_dx=0, raw_dy = 0;    // raw sensor change in x and y position (i.e. unrotated)
+    int16_t  raw_dx, raw_dy;    // raw sensor change in x and y position (i.e. unrotated)
     surface_quality = read_register(ADNS3080_SQUAL);
-    hal.scheduler->delay_microseconds(500);
+    hal.scheduler->delay_microseconds(50);
 
     // check for movement, update x,y values
     motion_reg = read_register(ADNS3080_MOTION);
-//    hal.console->printf("Motion Reg: %d\n", motion_reg);
-
-    if((motion_reg & 0x10) != 0)
-    {
-    	hal.console->println("Overflow...");
-    }
     if ((motion_reg & 0x80) != 0) {
-		raw_dx = ((int8_t)read_register(ADNS3080_DELTA_X));
-		hal.scheduler->delay_microseconds(50);
-		raw_dy = ((int8_t)read_register(ADNS3080_DELTA_Y));
-	}
-    last_update = hal.scheduler->millis();
+        raw_dx = ((int8_t)read_register(ADNS3080_DELTA_X));
+        hal.scheduler->delay_microseconds(50);
+        raw_dy = ((int8_t)read_register(ADNS3080_DELTA_Y));
+    }else{
+        raw_dx = 0;
+        raw_dy = 0;
+    }
 
-    //hal.console->printf("Optflow x: %d Optflow y: %d\n", raw_dx, raw_dy);
+    last_update = hal.scheduler->millis();
 
     Vector3f rot_vector(raw_dx, raw_dy, 0);
 
@@ -208,9 +198,6 @@ void AP_OpticalFlow_ADNS3080::update(void)
     rot_vector.rotate(_orientation);
     dx = rot_vector.x;
     dy = rot_vector.y;
-
-    x += dx;
-    y += dy;
 }
 
 // parent method called at 1khz by periodic process
@@ -230,7 +217,6 @@ void AP_OpticalFlow_ADNS3080::read(void)
 // registers to be cleared
 void AP_OpticalFlow_ADNS3080::clear_motion()
 {
-	hal.console->println("Motion cleared...");
     // writing anything to this register will clear the sensor's motion
     // registers
     write_register(ADNS3080_MOTION_CLEAR,0xFF); 
@@ -238,8 +224,6 @@ void AP_OpticalFlow_ADNS3080::clear_motion()
     y_cm = 0;
     dx = 0;
     dy = 0;
-    x = 0;
-    y = 0;
 }
 
 // get_pixel_data - captures an image from the sensor and stores it to the
@@ -269,7 +253,7 @@ void AP_OpticalFlow_ADNS3080::print_pixel_data()
             }
             isFirstPixel = false;
             pixelValue = ( regValue << 2 );
-            hal.console->print(pixelValue,10);
+            hal.console->print(pixelValue,BASE_DEC);
             if (j!= ADNS3080_PIXELS_X-1)
                 hal.console->print_P(PSTR(","));
             hal.scheduler->delay_microseconds(50);
@@ -288,5 +272,4 @@ void AP_OpticalFlow_ADNS3080::update_conversion_factors()
     // 0.00615
     radians_to_pixels = (ADNS3080_PIXELS_X * AP_OPTICALFLOW_ADNS3080_SCALER_1600) / field_of_view;
     // 162.99
-
 }

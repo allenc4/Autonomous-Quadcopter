@@ -396,6 +396,17 @@ const AP_Param::Info var_info[] PROGMEM = {
 	    // @User: Standard
 	    GGROUP(pi_loiter_lon,   "HLD_LON_", APM_PI),
 
+		// @Param: THR_MID
+		// @DisplayName: Throttle Mid Position
+		// @Description: The throttle output (0 ~ 1000) when throttle stick is in mid position.
+		// 		Used to scale the manual throttle so that the mid throttle stick position is close to
+		// 		the throttle required to hover
+		// @User: Standard
+		// @Range: 300 700
+		// @Units: Percent*10
+		// @Increment: 1
+		GSCALAR(throttle_mid,        "THR_MID",    THR_MID_DEFAULT),
+
 
 	AP_VAREND
 };

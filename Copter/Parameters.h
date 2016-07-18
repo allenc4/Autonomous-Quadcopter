@@ -60,8 +60,7 @@ public:
 
         //
         // 170: Radio settings
-        //
-		//
+        k_param_throttle_mid,
 
 
         //
@@ -183,9 +182,9 @@ public:
 
 	APM_PI                  pi_loiter_lat;
 	APM_PI                  pi_loiter_lon;
-	APM_PI                  pi_stabilize_roll;
-	APM_PI                  pi_stabilize_pitch;
-	APM_PI                  pi_stabilize_yaw;
+	AC_P                    p_stabilize_roll;
+	AC_P                    p_stabilize_pitch;
+	AC_P                    p_stabilize_yaw;
 	APM_PI                  pi_alt_hold;
 
     // Fly-by-wire
@@ -193,7 +192,7 @@ public:
 
 
     // Throttle
-    //
+	AP_Int16        throttle_mid;
 
 
 	// Failsafe
@@ -238,9 +237,9 @@ public:
 		pi_loiter_lat           (LOITER_P,              LOITER_I,               LOITER_IMAX * 100),
 		pi_loiter_lon           (LOITER_P,              LOITER_I,               LOITER_IMAX * 100),
 
-		pi_stabilize_roll       (STABILIZE_ROLL_P,      STABILIZE_ROLL_I,       STABILIZE_ROLL_IMAX * 100),
-		pi_stabilize_pitch      (STABILIZE_PITCH_P,     STABILIZE_PITCH_I,      STABILIZE_PITCH_IMAX * 100),
-		pi_stabilize_yaw        (STABILIZE_YAW_P,       STABILIZE_YAW_I,        STABILIZE_YAW_IMAX * 100),
+		p_stabilize_roll       (STABILIZE_ROLL_P),
+		p_stabilize_pitch      (STABILIZE_PITCH_P),
+		p_stabilize_yaw        (STABILIZE_YAW_P),
 
 		pi_alt_hold             (ALT_HOLD_P,            ALT_HOLD_I,             ALT_HOLD_IMAX)
 	{

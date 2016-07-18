@@ -31,6 +31,7 @@
 #include <GPIO.h>
 
 #include <AP_Curve.h>
+#include <AC_AttitudeControl.h>
 #include <APM_PI.h>
 #include <AC_PID.h>
 #include <PID.h>
@@ -56,17 +57,37 @@ static void update_trig();
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 // ArduPilot Hardware Abstraction Layer (HAL)
-const AP_HAL::HAL& hal = AP_HAL_AVR_APM2;
+const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
+AP_Vehicle::MultiCopter aparm;
 
 extern const AP_Param::Info var_info[];
-AP_Param param_loader(var_info, HAL_STORAGE_SIZE);
+AP_Param param_loader(var_info);
 
 Parameters g;
 
 // MPU6050 accel/gyro chip
-AP_InertialSensor_MPU6000 ins;
-GPS *gps;  // Not formally used in this code. Only declared to create AHRS object
-AP_AHRS_MPU6000 ahrs(&ins, gps);
+AP_InertialSensor ins;
+// Not formally used in this code. Only declared to create AHRS object
+AP_GPS *gps;
+#if CONFIG_BARO == HAL_BARO_BMP085
+static AP_Baro_BMP085 barometer;
+#elif CONFIG_BARO == HAL_BARO_PX4
+static AP_Baro_PX4 barometer;
+#elif CONFIG_BARO == HAL_BARO_VRBRAIN
+static AP_Baro_VRBRAIN barometer;
+#elif CONFIG_BARO == HAL_BARO_HIL
+static AP_Baro_HIL barometer;
+#elif CONFIG_BARO == HAL_BARO_MS5611
+static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::i2c);
+#elif CONFIG_BARO == HAL_BARO_MS5611_SPI
+static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::spi);
+#else
+ #error Unrecognized CONFIG_BARO setting
+#endif
+
+AP_AHRS_DCM ahrs(ins, barometer, gps);
+AC_AttitudeControl attitude(ahrs, aparm, motors, g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
+        g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
 // Vector that holds gyro data
 Vector3f gyroVals;
@@ -77,23 +98,23 @@ AP_Compass_HMC5843 compass;
 ////////////////////////////////////////////////////////////////////////////////
 // Rate contoller targets
 ////////////////////////////////////////////////////////////////////////////////
-uint8_t rate_targets_frame = EARTH_FRAME;    // indicates whether rate targets provided in earth or body frame
-int32_t roll_rate_target_ef;
-int32_t pitch_rate_target_ef;
-int32_t yaw_rate_target_ef;
-int32_t roll_rate_target_bf;     // body frame roll rate target
-int32_t pitch_rate_target_bf;    // body frame pitch rate target
-int32_t yaw_rate_target_bf;      // body frame yaw rate target
+//uint8_t rate_targets_frame = EARTH_FRAME;    // indicates whether rate targets provided in earth or body frame
+//int32_t roll_rate_target_ef;
+//int32_t pitch_rate_target_ef;
+//int32_t yaw_rate_target_ef;
+//int32_t roll_rate_target_bf;     // body frame roll rate target
+//int32_t pitch_rate_target_bf;    // body frame pitch rate target
+//int32_t yaw_rate_target_bf;      // body frame yaw rate target
 ////////////////////////////////////////////////////////////////////////////////
 // Convenience accessors for commonly used trig functions. These values are generated
 // by the DCM through a few simple equations.
 // The cos values are defaulted to 1 to get a decent initial value for a level state
-float cos_roll_x         = 1.0;
-float cos_pitch_x        = 1.0;
-float cos_yaw            = 1.0;
-float sin_yaw;
-float sin_roll;
-float sin_pitch;
+//float cos_roll_x         = 1.0;
+//float cos_pitch_x        = 1.0;
+//float cos_yaw            = 1.0;
+//float sin_yaw;
+//float sin_roll;
+//float sin_pitch;
 
 ////////////////////////////////////////////////////////////////////////////////
 // SIMPLE Mode
@@ -225,12 +246,13 @@ void setup()
 
 	while (!sensorsReady) {
 		// Wait until we have orientation data
-		while (ins.num_samples_available() == 0);
+		ins.wait_for_sample();
 
 		hal.scheduler->delay(50);
 		ins.update();
-		float sensor_roll,sensor_pitch,sensor_yaw;
-		ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
+		float sensor_roll = ahrs.roll_sensor,
+				sensor_pitch = ahrs.pitch_sensor,
+				sensor_yaw = ahrs.yaw_sensor;
 
 		// If there is no previous sensor data, set it now
 		if (prev_sensor_roll == EMPTY) {
@@ -289,7 +311,7 @@ void loop()
 {
 	uint32_t currentMillis = hal.scheduler->millis();
 	
-	while (ins.num_samples_available() == 0);
+	ins.wait_for_sample();
 
 	// Execute the fast loop
 	// ---------------------
@@ -404,7 +426,7 @@ static void fast_loop() {
 		// Initialize MPU6050 sensor
 		float roll_trim, pitch_trim;
 		AP_InertialSensor_UserInteractStream interact(hal.console);
-		if(!ins.calibrate_accel(NULL, &interact, roll_trim, pitch_trim)){
+		if(!ins.calibrate_accel(&interact, roll_trim, pitch_trim)){
 			while (true) {
 				a_led->write(HAL_GPIO_LED_OFF);
 				hal.scheduler->delay(1000);
@@ -413,14 +435,14 @@ static void fast_loop() {
 			}
 		}
 
-		ins.push_accel_offsets_to_dmp();
-		ins.push_gyro_offsets_to_dmp();
+//		ins.push_accel_offsets_to_dmp();
+//		ins.push_gyro_offsets_to_dmp();
 		lastMode = NO_MODE;
 		modeSelectTimer = 0;
 	}
 
 	// run low level rate controllers that only require IMU data
-	run_rate_controllers();
+	attitude.rate_controller_run();
 
 	// output to motors
 	motors.output();
@@ -459,25 +481,8 @@ static void fast_loop() {
 	control_roll            = rc_channels[RC_CHANNEL_ROLL].control_in;
 	control_pitch           = rc_channels[RC_CHANNEL_PITCH].control_in;
 
-		float sensor_roll, sensor_pitch, sensor_yaw;
-
-		//this is just for yaw
-		ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
-
-		//caluclate roll and pitch from raw accel data
-		Vector3f accel = ins.get_accel();
-		sensor_roll = 	atan(	accel.y / (sqrt(pow(accel.x, 2) + pow(accel.z, 2))));
-		sensor_pitch = 	atan(	accel.x / (sqrt(pow(accel.y, 2) + pow(accel.z, 2))));
-	//	sensor_yaw = 	atan(	sqrt(pow(accel.x, 2) + pow(accel.y, 2)) / accel.z);
-	//
-
-		// Convert everything to degrees
-		sensor_roll  = -ToDeg(sensor_roll);
-		sensor_pitch = ToDeg(sensor_pitch);
-		sensor_yaw   = ToDeg(sensor_yaw);
-
-	get_stabilize_roll(control_roll, sensor_roll);
-	get_stabilize_pitch(control_pitch, sensor_pitch);
+	get_stabilize_roll(control_roll);
+	get_stabilize_pitch(control_pitch);
 
 	// update targets to rate controllers
 	update_rate_contoller_targets();
@@ -523,36 +528,36 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-static void update_trig() {
-    Vector2f yawvector;
-    const Matrix3f &temp   = ahrs.get_dcm_matrix();
-
-    yawvector.x = temp.a.x; 	// sin
-    yawvector.y = temp.b.x;		// cos
-    yawvector.normalize();
-
-    cos_pitch_x = safe_sqrt(1 - (temp.c.x * temp.c.x));	 // level = 1
-    cos_roll_x  = temp.c.z / cos_pitch_x;				 // level = 1
-
-    cos_pitch_x = constrain_float(cos_pitch_x, 0, 1.0);
-    // this relies on constrain_float() of infinity doing the right thing,
-    // which it does do in avr-libc
-    cos_roll_x = constrain_float(cos_roll_x, -1.0, 1.0);
-
-    sin_yaw = constrain_float(yawvector.y, -1.0, 1.0);
-    cos_yaw = constrain_float(yawvector.x, -1.0, 1.0);
-
-    // added to convert earth frame to body frame for rate controllers
-    sin_pitch = -temp.c.x;
-    sin_roll  = temp.c.y / cos_pitch_x;
-
-    //flat:
-    // 0 ° = cos_yaw:  1.00, sin_yaw:  0.00,
-    // 90° = cos_yaw:  0.00, sin_yaw:  1.00,
-    // 180 = cos_yaw: -1.00, sin_yaw:  0.00,
-    // 270 = cos_yaw:  0.00, sin_yaw: -1.00,
-
-    gyroVals = ins.get_gyro();
-}
+//static void update_trig() {
+//    Vector2f yawvector;
+//    const Matrix3f &temp   = ahrs.get_dcm_matrix();
+//
+//    yawvector.x = temp.a.x; 	// sin
+//    yawvector.y = temp.b.x;		// cos
+//    yawvector.normalize();
+//
+//    cos_pitch_x = safe_sqrt(1 - (temp.c.x * temp.c.x));	 // level = 1
+//    cos_roll_x  = temp.c.z / cos_pitch_x;				 // level = 1
+//
+//    cos_pitch_x = constrain_float(cos_pitch_x, 0, 1.0);
+//    // this relies on constrain_float() of infinity doing the right thing,
+//    // which it does do in avr-libc
+//    cos_roll_x = constrain_float(cos_roll_x, -1.0, 1.0);
+//
+//    sin_yaw = constrain_float(yawvector.y, -1.0, 1.0);
+//    cos_yaw = constrain_float(yawvector.x, -1.0, 1.0);
+//
+//    // added to convert earth frame to body frame for rate controllers
+//    sin_pitch = -temp.c.x;
+//    sin_roll  = temp.c.y / cos_pitch_x;
+//
+//    //flat:
+//    // 0 ° = cos_yaw:  1.00, sin_yaw:  0.00,
+//    // 90° = cos_yaw:  0.00, sin_yaw:  1.00,
+//    // 180 = cos_yaw: -1.00, sin_yaw:  0.00,
+//    // 270 = cos_yaw:  0.00, sin_yaw: -1.00,
+//
+//    gyroVals = ins.get_gyro();
+//}
 
 AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).

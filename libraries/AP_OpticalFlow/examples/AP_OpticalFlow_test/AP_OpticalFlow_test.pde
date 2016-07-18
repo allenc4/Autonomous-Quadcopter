@@ -6,7 +6,7 @@
 #include <AP_Common.h>
 #include <AP_Progmem.h>
 #include <AP_Param.h>
-//#include <StorageManager.h>
+#include <StorageManager.h>
 #include <AP_Math.h>
 #include <AP_HAL.h>
 #include <AP_HAL_AVR.h>
@@ -16,11 +16,6 @@
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
 
 AP_OpticalFlow_ADNS3080 optflow;
-
-
-void read(uint32_t now) {
-	optflow.read();
-}
 
 void setup()
 {
@@ -32,8 +27,6 @@ void setup()
     optflow.init();
     if (!optflow.healthy()) {
         hal.console->print("Failed to initialise ADNS3080 ");
-    } else {
-    	hal.scheduler->register_timer_process( read );
     }
 
     hal.scheduler->delay(1000);

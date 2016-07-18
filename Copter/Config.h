@@ -27,6 +27,9 @@
 // Optical Flow sensor
 #define OPTFLOW					DISABLED
 
+// Barometer
+#define CONFIG_BARO     HAL_BARO_DEFAULT
+
 //modes
 #define MODE_SELECT_TIME		5000
 #define NO_MODE					0
@@ -71,6 +74,13 @@
 #define RC_ROLL_MAX_SCALED	 45
 #define RC_PITCH_MIN_SCALED	-45
 #define RC_PITCH_MAX_SCALED	 45
+
+// RC Feel roll/pitch definitions
+#define RC_FEEL_RP_VERY_SOFT        0
+#define RC_FEEL_RP_SOFT             25
+#define RC_FEEL_RP_MEDIUM           50
+#define RC_FEEL_RP_CRISP            75
+#define RC_FEEL_RP_VERY_CRISP       100
 
 // Inertial sensor values for pitch, roll, and yaw need to be stable before flight.
 // If the difference between the last read sensor value and current value is less than
@@ -187,7 +197,18 @@
 
 //////////////////////////////////////////////////////////////////////////////
 // Attitude Control
+
+// Stabilize Rate Control
 //
+#ifndef ROLL_PITCH_INPUT_MAX
+ # define ROLL_PITCH_INPUT_MAX      4500            // roll, pitch input range
+#endif
+#ifndef DEFAULT_ANGLE_MAX
+ # define DEFAULT_ANGLE_MAX         4500            // ANGLE_MAX parameters default value
+#endif
+#ifndef ANGLE_RATE_MAX
+ # define ANGLE_RATE_MAX            18000           // default maximum rotation rate in roll/pitch axis requested by angle controller used in stabilize, loiter, rtl, auto flight modes
+#endif
 
 // definitions for earth frame and body frame
 // used to specify frame to rate controllers
@@ -216,49 +237,31 @@
 //
 
 // Acro mode gains
-#ifndef ACRO_P
- # define ACRO_P                 4.5f
-#endif
-
-#ifndef AXIS_LOCK_ENABLED
- # define AXIS_LOCK_ENABLED      ENABLED
-#endif
+// Acro Mode
+#define ACRO_RP_P                 4.5f
+#define ACRO_YAW_P                4.5f
+#define ACRO_LEVEL_MAX_ANGLE      3000
+#define ACRO_BALANCE_ROLL          1.0f
+#define ACRO_BALANCE_PITCH         1.0f
+#define ACRO_EXPO_DEFAULT          0.3f
+# define AXIS_LOCK_ENABLED      ENABLED
 
 // Stabilize (angle controller) gains
-#ifndef STABILIZE_ROLL_P
- # define STABILIZE_ROLL_P          4.5f
-#endif
-#ifndef STABILIZE_ROLL_I
- # define STABILIZE_ROLL_I          0.0f
-#endif
-#ifndef STABILIZE_ROLL_IMAX
- # define STABILIZE_ROLL_IMAX    	8.0f            // degrees
-#endif
+#define STABILIZE_ROLL_P          4.5f
+#define STABILIZE_ROLL_I          0.0f
+#define STABILIZE_ROLL_IMAX    	8.0f            // degrees
 
-#ifndef STABILIZE_PITCH_P
- # define STABILIZE_PITCH_P         4.5f
-#endif
-#ifndef STABILIZE_PITCH_I
- # define STABILIZE_PITCH_I         0.0f
-#endif
-#ifndef STABILIZE_PITCH_IMAX
- # define STABILIZE_PITCH_IMAX   	8.0f            // degrees
-#endif
+#define STABILIZE_PITCH_P         4.5f
+#define STABILIZE_PITCH_I         0.0f
+#define STABILIZE_PITCH_IMAX   	8.0f            // degrees
 
-#ifndef  STABILIZE_YAW_P
- # define STABILIZE_YAW_P           4.5f            // increase for more aggressive Yaw Hold, decrease if it's bouncy
-#endif
-#ifndef  STABILIZE_YAW_I
- # define STABILIZE_YAW_I           0.0f
-#endif
-#ifndef  STABILIZE_YAW_IMAX
- # define STABILIZE_YAW_IMAX        8.0f            // degrees * 100
-#endif
+#define STABILIZE_YAW_P           4.5f            // increase for more aggressive Yaw Hold, decrease if it's bouncy
+#define STABILIZE_YAW_I           0.0f
+#define STABILIZE_YAW_IMAX        8.0f            // degrees * 100
 
 #ifndef YAW_LOOK_AHEAD_MIN_SPEED
  # define YAW_LOOK_AHEAD_MIN_SPEED  1000             // minimum ground speed in cm/s required before copter is aimed at ground course
 #endif
-
 
 //////////////////////////////////////////////////////////////////////////////
 // Stabilize Rate Control

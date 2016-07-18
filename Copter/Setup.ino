@@ -49,10 +49,15 @@ bool Init_Arducopter() {
 	hal.gpio->pinMode(40, HAL_GPIO_OUTPUT);
 	hal.gpio->write(40, 1);
 
+	ahrs.init();  // Internally calls MPU6050's internal sensor fusion (DigitalMotionProcessing)
+	ahrs.set_vehicle_class(AHRS_VEHICLE_COPTER);
+
 	// Initialize MPU6050 sensor
 	ins.init(AP_InertialSensor::COLD_START,
-			 AP_InertialSensor::RATE_100HZ,
-			 flashLeds);
+			 AP_InertialSensor::RATE_100HZ);
+
+	// Reset gyro
+	ahrs.reset_gyro_drift();
 
 
 	if(!ins.calibrated()){
@@ -71,14 +76,15 @@ bool Init_Arducopter() {
 		// Initialize MPU6050 sensor
 		float roll_trim, pitch_trim;
 		AP_InertialSensor_UserInteractStream interact(hal.console);
-		if(!ins.calibrate_accel(NULL, &interact, roll_trim, pitch_trim)){
+		if(!ins.calibrate_accel(&interact, roll_trim, pitch_trim)){
 			hal.scheduler->delay(500);
 			return false;
 		}
 	}
 
-	ins.push_accel_offsets_to_dmp();
-	ins.push_gyro_offsets_to_dmp();
+	// TODO - Does new init() library call push accel and gyro offsets to the dmp?
+//	ins.push_accel_offsets_to_dmp();
+//	ins.push_gyro_offsets_to_dmp();
 
 	//check if the accelerometer has been calibrated
 	//this will load the accel offsets from EEPORM
@@ -90,24 +96,8 @@ bool Init_Arducopter() {
 		return false;
 	}
 
-	ahrs.init();  // Internally calls MPU6050's internal sensor fusion (DigitalMotionProcessing)
-
-
-	// Initialize MPU6050's internal sensor fusion (aka DigitalMotionProcessing)
-//	hal.scheduler->suspend_timer_procs();  // stop bus collisions
-//	ins.dmp_init();
-
 	// setup fast AHRS gains to get right attitude
 	ahrs.set_fast_gains(true);
-
-	// Set accelerometer offsets and scale
-//	Vector3<float> accel_offsets(ACCEL_X_OFFSET, ACCEL_Y_OFFSET, ACCEL_Z_OFFSET);
-//	Vector3<float> accel_scaling(ACCEL_X_SCALE, ACCEL_Y_SCALE, ACCEL_Z_SCALE);
-//	ins.set_accel_offsets(accel_offsets);
-//	ins.set_accel_scale(accel_scaling);
-
-//	ins.push_gyro_offsets_to_dmp();
-//	ins.push_accel_offsets_to_dmp();
 
 	// Initialize LIDAR and ensure it is connected at startup
 #if LIDAR == ENABLED
@@ -194,8 +184,8 @@ void Setup_Motors() {
 	motors.set_update_rate(RC_FAST_SPEED);
 	motors.set_frame_orientation(AP_MOTORS_X_FRAME);
 	motors.Init();
-	motors.set_min_throttle(0);
-	motors.set_max_throttle(1000);
+//	motors.set_min_throttle(0);
+//	motors.set_max_throttle(1000);
 
 	for(uint8_t i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
 		hal.scheduler->delay(20);
@@ -260,7 +250,7 @@ void accel_calibration() {
 		// Call the Ardupilot library function to calibrate the accelerometer, get offsets and scaling,
 		// and pitch/roll trim values
 		AP_InertialSensor_UserInteract *console = new INS_UserInteract;
-		ins.calibrate_accel(NULL, console, trim_pitch, trim_roll);
+		ins.calibrate_accel(console, trim_pitch, trim_roll);
 
 		hal.console->printf("Pitch trim: %4.2f\t Roll trim: %4.2f",
 				trim_pitch, trim_roll);
