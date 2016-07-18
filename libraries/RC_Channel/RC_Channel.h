@@ -99,10 +99,10 @@ public:
     void                                            enable_out();
 
     static const struct AP_Param::GroupInfo         var_info[];
-
+    AP_Int16        _dead_zone;
 private:
     AP_Int8         _reverse;
-    AP_Int16        _dead_zone;
+
     uint8_t         _type;
     int16_t         _high;
     int16_t         _low;

@@ -144,16 +144,17 @@ update_rate_contoller_targets()
     if( rate_targets_frame == EARTH_FRAME ) {
         // convert earth frame rates to body frame rates
         roll_rate_target_bf 	= roll_rate_target_ef - sin_pitch * yaw_rate_target_ef;
+        hal.console->printf("rol_bf: %d", roll_rate_target_bf);
         pitch_rate_target_bf 	= cos_roll_x  * pitch_rate_target_ef + sin_roll * cos_pitch_x * yaw_rate_target_ef;
         yaw_rate_target_bf 		= cos_pitch_x * cos_roll_x * yaw_rate_target_ef - sin_roll * pitch_rate_target_ef;
     }
 }
 
 void
-get_stabilize_roll(int32_t target_angle)
+get_stabilize_roll(int32_t target_angle, int32_t sensor_roll)
 {
     // angle error
-    target_angle            = wrap_180_cd(target_angle - ahrs.roll_sensor);
+    target_angle            = wrap_180_cd(target_angle - sensor_roll);
 
     // limit the error we're feeding to the PID
     target_angle            = constrain_int32(target_angle, -4500, 4500);
@@ -166,10 +167,10 @@ get_stabilize_roll(int32_t target_angle)
 }
 
 void
-get_stabilize_pitch(int32_t target_angle)
+get_stabilize_pitch(int32_t target_angle, int32_t sensor_pitch)
 {
     // angle error
-    target_angle            = wrap_180_cd(target_angle - ahrs.pitch_sensor);
+    target_angle            = wrap_180_cd(target_angle - sensor_pitch);
 
     // limit the error we're feeding to the PID
     target_angle            = constrain_int32(target_angle, -4500, 4500);

@@ -115,13 +115,79 @@ void AP_MotorsMatrix::output_armed()
     // To-Do: we should not really be limiting this here because we don't "own" this _rc_throttle object
     _rc_throttle->servo_out = constrain_int16(_rc_throttle->servo_out, 0, _max_throttle);
 
+    //throttle prints
+//    hal.console->print("\tcontrol_in: ");
+//    hal.console->print(_rc_throttle->control_in);
+//    hal.console->print("\tradio_in: ");
+//    hal.console->print(_rc_throttle->radio_in);
+//    hal.console->print("\t radio_out BEFORE: ");
+//	  hal.console->print(_rc_throttle->radio_out);
+//    hal.console->print("\t_max_throttle: ");
+//    hal.console->print(_max_throttle);
+//    hal.console->print("\tservo_out: ");
+//    hal.console->print(_rc_throttle->servo_out);
+
+    //roll prnts
+//    hal.console->print("\tcontrol_in: ");
+//    hal.console->print(_rc_roll->control_in);
+//    hal.console->print("\tradio_in: ");
+//    hal.console->print(_rc_roll->radio_in);
+//    hal.console->print("\t_max_throttle: ");
+//    hal.console->print(_max_throttle);
+//    hal.console->print("\tservo_out: ");
+//    hal.console->print(_rc_roll->servo_out);
+//    hal.console->print("\t_rc_roll pwm BEFORE: ");
+//    hal.console->print(_rc_roll->pwm_out);
+//    hal.console->print("\t_rc_roll radio_out BEFORE: ");
+//    hal.console->print(_rc_roll->radio_out);
+
+//    hal.console->print("\t_rc_pitch pwm BEFORE: ");
+//    hal.console->print(_rc_pitch->pwm_out);
+//    hal.console->print("\t pwm BEFORE: ");
+//    hal.console->print(_rc_throttle->pwm_out);
+//    hal.console->print("\t_rc_yaw pwm BEFORE: ");
+//    hal.console->print(_rc_yaw->pwm_out);
+//
+
+//    hal.console->print("\t_rc_pitch rado_out BEFORE: ");
+//    hal.console->print(_rc_pitch->radio_out);
+
+//    hal.console->print("\t_rc_yaw radio_out BEFORE: ");
+//    hal.console->print(_rc_yaw->radio_out);
+
     // capture desired roll, pitch, yaw and throttle from receiver
     _rc_roll->calc_pwm();
     _rc_pitch->calc_pwm();
     _rc_throttle->calc_pwm();
     _rc_yaw->calc_pwm();
+//
 
-    hal.console->println(_rc_throttle->servo_out);
+    //roll prints
+//    hal.console->print("\t_rc_roll pwm AFTER: ");
+//    hal.console->print(_rc_roll->pwm_out);
+//    hal.console->print("\t_rc_roll radio_out AFTER: ");
+//    hal.console->print(_rc_roll->radio_out);
+
+//    hal.console->print("\t_rc_pitch pwm AFTER: ");
+//    hal.console->print(_rc_pitch->pwm_out);
+//    hal.console->print("\t pwm AFTER: ");
+//    hal.console->print(_rc_throttle->pwm_out);
+//    hal.console->print("\t_rc_yaw pwm AFTER: ");
+//    hal.console->print(_rc_yaw->pwm_out);
+
+
+//    hal.console->print("\t_rc_pitch rado_out AFTER: ");
+//    hal.console->print(_rc_pitch->radio_out);
+//    hal.console->print("\t radio_out AFTER: ");
+//    hal.console->print(_rc_throttle->radio_out);
+//    hal.console->print("\t_rc_yaw radio_out AFTER: ");
+//    hal.console->print(_rc_yaw->radio_out);
+
+
+    hal.console->println("");
+
+
+//    hal.console->println(_rc_throttle->servo_out);
 
     // if we are not sending a throttle output, we cut the motors
     if (_rc_throttle->servo_out == 0) {

@@ -194,8 +194,8 @@ void Setup_Motors() {
 	motors.set_update_rate(RC_FAST_SPEED);
 	motors.set_frame_orientation(AP_MOTORS_X_FRAME);
 	motors.Init();
-	motors.set_min_throttle(RC_THROTTLE_MIN + 50);
-	motors.set_max_throttle(RC_THROTTLE_MAX);
+	motors.set_min_throttle(0);
+	motors.set_max_throttle(1000);
 
 	for(uint8_t i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
 		hal.scheduler->delay(20);
@@ -223,6 +223,7 @@ void Setup_RC_Channels() {
 
 	rc_channels[RC_CHANNEL_THROTTLE].radio_min = RC_THROTTLE_MIN;
 	rc_channels[RC_CHANNEL_THROTTLE].radio_max = RC_THROTTLE_MAX;
+	rc_channels[RC_CHANNEL_THROTTLE].set_range(0, 1000);
 	rc_channels[RC_CHANNEL_THROTTLE].set_range_out(0, 1000);
 
 }

@@ -425,11 +425,14 @@ static void fast_loop() {
 	// output to motors
 	motors.output();
 	if (DEBUG == ENABLED && loop_count % 20 == 0) {
-		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\n",
+		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\t",
 				motors.motor_out[2],
 				motors.motor_out[0],
 				motors.motor_out[1],
 				motors.motor_out[3]);
+		hal.console->printf("RCTCI: %d\t RCTRI: %d\t", rc_channels[RC_CHANNEL_THROTTLE].control_in, rc_channels[RC_CHANNEL_THROTTLE].radio_in);
+		hal.console->printf("RCPCI: %d\t RCPRI: %d\t", rc_channels[RC_CHANNEL_PITCH].control_in, rc_channels[RC_CHANNEL_PITCH].radio_in);
+		hal.console->printf("RCRCI: %d\t RCRRI: %d\n", rc_channels[RC_CHANNEL_ROLL].control_in, rc_channels[RC_CHANNEL_ROLL].radio_in);
 	}
 
 	// Read RC values
@@ -456,8 +459,25 @@ static void fast_loop() {
 	control_roll            = rc_channels[RC_CHANNEL_ROLL].control_in;
 	control_pitch           = rc_channels[RC_CHANNEL_PITCH].control_in;
 
-	get_stabilize_roll(control_roll);
-	get_stabilize_pitch(control_pitch);
+		float sensor_roll, sensor_pitch, sensor_yaw;
+
+		//this is just for yaw
+		ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
+
+		//caluclate roll and pitch from raw accel data
+		Vector3f accel = ins.get_accel();
+		sensor_roll = 	atan(	accel.y / (sqrt(pow(accel.x, 2) + pow(accel.z, 2))));
+		sensor_pitch = 	atan(	accel.x / (sqrt(pow(accel.y, 2) + pow(accel.z, 2))));
+	//	sensor_yaw = 	atan(	sqrt(pow(accel.x, 2) + pow(accel.y, 2)) / accel.z);
+	//
+
+		// Convert everything to degrees
+		sensor_roll  = -ToDeg(sensor_roll);
+		sensor_pitch = ToDeg(sensor_pitch);
+		sensor_yaw   = ToDeg(sensor_yaw);
+
+	get_stabilize_roll(control_roll, sensor_roll);
+	get_stabilize_pitch(control_pitch, sensor_pitch);
 
 	// update targets to rate controllers
 	update_rate_contoller_targets();
