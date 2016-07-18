@@ -37,7 +37,7 @@ void accel_Gyro_Test()
 			// Clear out any existing samples from ins
 			ins.update();
 			// Wait until we have a sample
-			while (ins.num_samples_available() == 0);
+			ins.wait_for_sample();
 
 			if (input == 'a')
 			{
@@ -68,14 +68,12 @@ void accel_Gyro_Test()
 									  ToDeg(gyro.x), ToDeg(gyro.y), ToDeg(gyro.z));
 			} else if (input == 's')
 			{
-				float sensor_roll,sensor_pitch,sensor_yaw;
-				ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
 				//ins.set_accel_offsets();
 
 				hal.console->printf_P(PSTR("Gyroscope roll:%4.1f \t pitch:%4.1f \t yaw:%4.1f\n"),
-									  ToDeg(sensor_roll),
-									  ToDeg(sensor_pitch),
-									  ToDeg(sensor_yaw));
+									  ToDeg(ahrs.roll_sensor),
+									  ToDeg(ahrs.pitch_sensor),
+									  ToDeg(ahrs.yaw_sensor));
 			}
 
 			hal.scheduler->delay(100);

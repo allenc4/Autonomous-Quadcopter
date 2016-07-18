@@ -1,10 +1,10 @@
 #include "INS_UserInteract.h"
 
-uint8_t INS_UserInteract::blocking_read() {
+bool INS_UserInteract::blocking_read() {
 	while (hal.console->available() <= 0) {
 		hal.scheduler->delay(20);
 	}
-	return hal.console->read();
+	return hal.console->read() != 0;
 }
 
 void INS_UserInteract::_printf_P(const prog_char *str, ...) {

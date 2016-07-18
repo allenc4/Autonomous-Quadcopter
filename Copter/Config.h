@@ -13,8 +13,6 @@
  #include "APM_Config.h" // <== THIS INCLUDE, DO NOT EDIT IT. EVER.
 #endif
 
-
-#define HAL_STORAGE_SIZE            16384
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
 #define DEBUG			ENABLED
@@ -25,7 +23,10 @@
 #define LIDAR			DISABLED
 
 // Optical Flow sensor
-#define OPTFLOW					DISABLED
+#define OPTFLOW			DISABLED
+
+// Compass
+#define COMPASS			DISABLED
 
 // Barometer
 #define CONFIG_BARO     HAL_BARO_DEFAULT
@@ -66,6 +67,10 @@
 #define RC_ROLL_MAX      1984
 #define RC_THROTTLE_MIN  970
 #define RC_THROTTLE_MAX  1993
+
+#define THROTTLE_MID_DEFAULT	500 // middle throttle value (S.B. close to hover point)
+#define THROTTLE_MIN_DEFAULT	130 // minimum throttle sent to the motors when armed and pilot throttle above zero
+
 
 // RC scaled values
 #define RC_YAW_MIN_SCALED 	-150

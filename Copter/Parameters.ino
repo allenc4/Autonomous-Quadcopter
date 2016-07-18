@@ -274,67 +274,28 @@ const AP_Param::Info var_info[] PROGMEM = {
 	    // @User: Standard
 	    GGROUP(pid_optflow_pitch, "OF_PIT_",   AC_PID),
 
-	    // PI controller
-	    //--------------
-	    // @Param: STB_RLL_P
-	    // @DisplayName: Roll axis stabilize controller P gain
-	    // @Description: Roll axis stabilize (i.e. angle) controller P gain.  Converts the error between the desired roll angle and actual angle to a desired roll rate
-	    // @Range: 3.000 6.000
-	    // @User: Standard
+		 // P controllers
+		//--------------
+		// @Param: STB_RLL_P
+		// @DisplayName: Roll axis stabilize controller P gain
+		// @Description: Roll axis stabilize (i.e. angle) controller P gain.  Converts the error between the desired roll angle and actual angle to a desired roll rate
+		// @Range: 3.000 12.000
+		// @User: Standard
+		GGROUP(p_stabilize_roll,       "STB_RLL_", AC_P),
 
-	    // @Param: STB_RLL_I
-	    // @DisplayName: Roll axis stabilize controller I gain
-	    // @Description: Roll axis stabilize (i.e. angle) controller I gain.  Corrects for longer-term difference in desired roll angle and actual angle
-	    // @Range: 0.000 0.100
-	    // @User: Standard
+		// @Param: STB_PIT_P
+		// @DisplayName: Pitch axis stabilize controller P gain
+		// @Description: Pitch axis stabilize (i.e. angle) controller P gain.  Converts the error between the desired pitch angle and actual angle to a desired pitch rate
+		// @Range: 3.000 12.000
+		// @User: Standard
+		GGROUP(p_stabilize_pitch,      "STB_PIT_", AC_P),
 
-	    // @Param: STB_RLL_IMAX
-	    // @DisplayName: Roll axis stabilize controller I gain maximum
-	    // @Description: Roll axis stabilize (i.e. angle) controller I gain maximum.  Constrains the maximum roll rate that the I term will generate
-	    // @Range: 0 4500
-	    // @Units: Centi-Degrees/Sec
-	    // @User: Standard
-	    GGROUP(pi_stabilize_roll,       "STB_RLL_", APM_PI),
-
-	    // @Param: STB_PIT_P
-	    // @DisplayName: Pitch axis stabilize controller P gain
-	    // @Description: Pitch axis stabilize (i.e. angle) controller P gain.  Converts the error between the desired pitch angle and actual angle to a desired pitch rate
-	    // @Range: 3.000 6.000
-	    // @User: Standard
-
-	    // @Param: STB_PIT_I
-	    // @DisplayName: Pitch axis stabilize controller I gain
-	    // @Description: Pitch axis stabilize (i.e. angle) controller I gain.  Corrects for longer-term difference in desired pitch angle and actual angle
-	    // @Range: 0.000 0.100
-	    // @User: Standard
-
-	    // @Param: STB_PIT_IMAX
-	    // @DisplayName: Pitch axis stabilize controller I gain maximum
-	    // @Description: Pitch axis stabilize (i.e. angle) controller I gain maximum.  Constrains the maximum pitch rate that the I term will generate
-	    // @Range: 0 4500
-	    // @Units: Centi-Degrees/Sec
-	    // @User: Standard
-	    GGROUP(pi_stabilize_pitch,      "STB_PIT_", APM_PI),
-
-	    // @Param: STB_YAW_P
-	    // @DisplayName: Yaw axis stabilize controller P gain
-	    // @Description: Yaw axis stabilize (i.e. angle) controller P gain.  Converts the error between the desired yaw angle and actual angle to a desired yaw rate
-	    // @Range: 3.000 6.000
-	    // @User: Standard
-
-	    // @Param: STB_YAW_I
-	    // @DisplayName: Yaw axis stabilize controller I gain
-	    // @Description: Yaw axis stabilize (i.e. angle) controller I gain.  Corrects for longer-term difference in desired yaw angle and actual angle
-	    // @Range: 0.000 0.100
-	    // @User: Standard
-
-	    // @Param: STB_YAW_IMAX
-	    // @DisplayName: Yaw axis stabilize controller I gain maximum
-	    // @Description: Yaw axis stabilize (i.e. angle) controller I gain maximum.  Constrains the maximum yaw rate that the I term will generate
-	    // @Range: 0 4500
-	    // @Units: Centi-Degrees/Sec
-	    // @User: Standard
-	    GGROUP(pi_stabilize_yaw,        "STB_YAW_", APM_PI),
+		// @Param: STB_YAW_P
+		// @DisplayName: Yaw axis stabilize controller P gain
+		// @Description: Yaw axis stabilize (i.e. angle) controller P gain.  Converts the error between the desired yaw angle and actual angle to a desired yaw rate
+		// @Range: 3.000 6.000
+		// @User: Standard
+		GGROUP(p_stabilize_yaw,        "STB_YAW_", AC_P),
 
 	    // @Param: THR_ALT_P
 	    // @DisplayName: Altitude controller P gain
@@ -405,7 +366,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 		// @Range: 300 700
 		// @Units: Percent*10
 		// @Increment: 1
-		GSCALAR(throttle_mid,        "THR_MID",    THR_MID_DEFAULT),
+		GSCALAR(throttle_mid,        "THR_MID",    THROTTLE_MID_DEFAULT),
 
 
 	AP_VAREND

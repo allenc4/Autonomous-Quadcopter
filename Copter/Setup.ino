@@ -59,7 +59,6 @@ bool Init_Arducopter() {
 	// Reset gyro
 	ahrs.reset_gyro_drift();
 
-
 	if(!ins.calibrated()){
 		//flash the leds 3 times so we know it needs to be calibrated
 		for(int i = 0; i < 4; i++)
@@ -82,10 +81,6 @@ bool Init_Arducopter() {
 		}
 	}
 
-	// TODO - Does new init() library call push accel and gyro offsets to the dmp?
-//	ins.push_accel_offsets_to_dmp();
-//	ins.push_gyro_offsets_to_dmp();
-
 	//check if the accelerometer has been calibrated
 	//this will load the accel offsets from EEPORM
 	//this should not be called during flight as it reads
@@ -95,6 +90,8 @@ bool Init_Arducopter() {
 		hal.console->println("Accelerometer is not calibrated.  Please Calibrate Before Continuing");
 		return false;
 	}
+
+	// Push accelerometer and gyro offsets to DMP
 
 	// setup fast AHRS gains to get right attitude
 	ahrs.set_fast_gains(true);
@@ -124,6 +121,7 @@ bool Init_Arducopter() {
 #endif // LIDAR == ENABLED
 
 	// Initialize compass
+#if COMPASS == ENABLED
 	if (!compass.init()) {
 		hal.console->println("compass initialisation failed!");
 		return false;
@@ -131,7 +129,7 @@ bool Init_Arducopter() {
 //		compass.set_offsets(0,0,0); // set offsets to account for surrounding interference
 //		compass.set_declination(ToRad(0.0)); // set local difference between magnetic north and true north
 	}
-
+#endif
 
 
 //	hal.scheduler->delay(50);
@@ -215,6 +213,15 @@ void Setup_RC_Channels() {
 	rc_channels[RC_CHANNEL_THROTTLE].radio_max = RC_THROTTLE_MAX;
 	rc_channels[RC_CHANNEL_THROTTLE].set_range(0, 1000);
 	rc_channels[RC_CHANNEL_THROTTLE].set_range_out(0, 1000);
+
+	// Set trim values to be in the middle for roll, pitch, yaw and min for throttle
+	rc_channels[RC_CHANNEL_ROLL].set_pwm((RC_ROLL_MIN + RC_ROLL_MAX)/2);
+	rc_channels[RC_CHANNEL_PITCH].set_pwm((RC_PITCH_MIN + RC_PITCH_MAX)/2);
+	rc_channels[RC_CHANNEL_YAW].set_pwm((RC_YAW_MIN + RC_YAW_MAX)/2);
+	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(RC_THROTTLE_MIN);
+	for (int i = 0; i <= 4; i++) {
+		rc_channels[i].trim();
+	}
 
 }
 

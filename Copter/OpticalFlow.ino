@@ -20,16 +20,14 @@ OpticalFlow::OpticalFlow(RangeFinder *rf) {
 
 bool OpticalFlow::init() {
 
-	if (_optflow.init() == false) {
+	_optflow.init();
+	if (!_optflow.healthy()){
 		// Failed to initialize optical flow sensor
 		hal.console->println("Failed to initialize optical flow sensor....");
 		hal.scheduler->delay(20);
 
 		return false;
 	}
-
-	// Create timer process to call read() for optical flow
-	hal.scheduler->register_timer_process(OpticalFlow::read);
 
 	// suspend timer while we set-up SPI communication
 	hal.scheduler->suspend_timer_procs();
@@ -55,7 +53,7 @@ void OpticalFlow::update() {
 		uint16_t dist = rangeFinder->getLastDistance();
 
 		// Update internal lon and lat with estimation based on optical flow
-		_optflow.update_position(ahrs.roll, ahrs.pitch, sin_yaw, cos_yaw, dist);
+		_optflow.update_position(ahrs.roll, ahrs.pitch, ahrs.sin_yaw(), ahrs.cos_yaw(), dist);
 
 //		if (DEBUG == ENABLED) {
 //			hal.console->printf("OpticalFlow change x: %4.1f, y: %4.1f\n", _optflow.change_x, _optflow.change_y);
@@ -177,10 +175,10 @@ float OpticalFlow::get_change_y() {
 void OpticalFlow::debug_print() {
 	if (loop_count % 10 == 0) {
 
-		hal.console->printf("X: %4.5f\t Y: %4.5f\t Squal: %d\t x_cm: %4.2f\t y_cm: %4.2f\t"
+		hal.console->printf("Squal: %d\t x_cm: %4.2f\t y_cm: %4.2f\t"
 				"pitch: %4.2f\t roll: %4.2f\n",
-				_optflow.x,
-				_optflow.y,
+//				_optflow.x,
+//				_optflow.y,
 				_optflow.surface_quality,
 				_optflow.x_cm,
 				_optflow.y_cm,

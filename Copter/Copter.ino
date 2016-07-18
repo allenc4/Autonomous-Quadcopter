@@ -12,11 +12,20 @@
 #include <AP_Param.h>
 #include <AP_Progmem.h>
 #include <AP_ADC.h>
+#include <AP_Vehicle.h>
+#include <AP_Notify.h>
+#include <DataFlash.h>
+#include <StorageManager.h>
 
 // Below libraries needed for Inertial Sensor
 #include <GCS_MAVLink.h>
 #include <Filter.h>
 #include <AP_InertialSensor.h>
+#include <AP_Mission.h>
+#include <AP_Terrain.h>
+#include <AP_Buffer.h>
+#include <AP_ADC_AnalogSource.h>
+#include <AP_InertialNav.h>
 #include <AP_AHRS.h>
 
 #include <AP_Baro.h>
@@ -53,7 +62,6 @@
 static void fast_loop();
 static void medium_loop();
 static void slow_loop();
-static void update_trig();
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 // ArduPilot Hardware Abstraction Layer (HAL)
@@ -68,7 +76,7 @@ Parameters g;
 // MPU6050 accel/gyro chip
 AP_InertialSensor ins;
 // Not formally used in this code. Only declared to create AHRS object
-AP_GPS *gps;
+AP_GPS gps;
 #if CONFIG_BARO == HAL_BARO_BMP085
 static AP_Baro_BMP085 barometer;
 #elif CONFIG_BARO == HAL_BARO_PX4
@@ -84,10 +92,6 @@ static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::spi);
 #else
  #error Unrecognized CONFIG_BARO setting
 #endif
-
-AP_AHRS_DCM ahrs(ins, barometer, gps);
-AC_AttitudeControl attitude(ahrs, aparm, motors, g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
-        g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
 // Vector that holds gyro data
 Vector3f gyroVals;
@@ -151,11 +155,14 @@ OpticalFlow opticalFlow(lidar);
 
 // Set up Motors instance to control all motors
 //Motors motors;
-AP_MotorsQuad motors(&rc_channels[RC_CHANNEL_ROLL],
-		&rc_channels[RC_CHANNEL_PITCH],
-		&rc_channels[RC_CHANNEL_THROTTLE],
-		&rc_channels[RC_CHANNEL_YAW]);
+AP_MotorsQuad motors(rc_channels[RC_CHANNEL_ROLL],
+		rc_channels[RC_CHANNEL_PITCH],
+		rc_channels[RC_CHANNEL_THROTTLE],
+		rc_channels[RC_CHANNEL_YAW]);
 
+AP_AHRS_DCM ahrs(ins, barometer, gps);
+AC_AttitudeControl attitude(ahrs, aparm, motors, g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
+        g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
 // The Commanded ROll based on optical flow sensor.
 int32_t of_roll;
@@ -241,7 +248,7 @@ void setup()
 	hal.console->println("Waiting for roll, pitch, and yaw values to stabilize...");
 
 	// TODO - change to false
-	bool sensorsReady = true;
+	bool sensorsReady = false;
 	float prev_sensor_roll = EMPTY, prev_sensor_pitch = EMPTY, prev_sensor_yaw = EMPTY;
 
 	while (!sensorsReady) {
@@ -249,10 +256,10 @@ void setup()
 		ins.wait_for_sample();
 
 		hal.scheduler->delay(50);
-		ins.update();
-		float sensor_roll = ahrs.roll_sensor,
-				sensor_pitch = ahrs.pitch_sensor,
-				sensor_yaw = ahrs.yaw_sensor;
+		ahrs.update();
+		float sensor_roll = ahrs.roll,
+				sensor_pitch = ahrs.pitch,
+				sensor_yaw = ahrs.yaw;
 
 		// If there is no previous sensor data, set it now
 		if (prev_sensor_roll == EMPTY) {
@@ -344,10 +351,6 @@ static void fast_loop() {
     fastLoopTimer = hal.scheduler->micros();
     // IMU DCM Algorithm
     ahrs.update();
-	ins.update();
-
-	update_trig();
-
 
 //	uint16_t channels[8];
 //	hal.rcin->read(channels, 8);
@@ -390,10 +393,10 @@ static void fast_loop() {
 //	}
 
 	// DEBUGGING PURPOSES ONLY ///////////////////////////////
-	//	rc_channels[RC_CHANNEL_THROTTLE] = RC_THROTTLE_MIN + 400;
-//		rc_channels[RC_CHANNEL_ROLL] = 0;
-//		rc_channels[RC_CHANNEL_PITCH] = 0;
-//		rc_channels[RC_CHANNEL_YAW] = 0;
+	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(RC_THROTTLE_MIN + 400);
+	rc_channels[RC_CHANNEL_ROLL].set_pwm((RC_ROLL_MIN + RC_ROLL_MAX)/2);
+	rc_channels[RC_CHANNEL_PITCH].set_pwm((RC_PITCH_MIN + RC_PITCH_MAX)/2);
+	rc_channels[RC_CHANNEL_YAW].set_pwm((RC_YAW_MIN + RC_YAW_MAX)/2);
 
 	if((rc_channels[RC_CHANNEL_THROTTLE].radio_in <= RC_THROTTLE_MIN + 75 &&
 			rc_channels[RC_CHANNEL_YAW].radio_in > (RC_YAW_MAX_SCALED - 25)))
@@ -410,7 +413,8 @@ static void fast_loop() {
 		lastModeSelectTime = currentTime;
 	}
 
-	if(lastMode == ACCEL_CALIBRATE_MODE && modeSelectTimer > MODE_SELECT_TIME){
+	if((lastMode == ACCEL_CALIBRATE_MODE && modeSelectTimer > MODE_SELECT_TIME) ||
+			ACCEL_CALIBRATE == ENABLED){
 		//flash the leds 3 times so we know it needs to be calibrated
 		for(int i = 0; i < 4; i++)
 		{
@@ -423,7 +427,7 @@ static void fast_loop() {
 			c_led->write(HAL_GPIO_LED_ON);
 			hal.scheduler->delay(1000);
 		}
-		// Initialize MPU6050 sensor
+
 		float roll_trim, pitch_trim;
 		AP_InertialSensor_UserInteractStream interact(hal.console);
 		if(!ins.calibrate_accel(&interact, roll_trim, pitch_trim)){
@@ -452,41 +456,23 @@ static void fast_loop() {
 //				motors.motor_out[0],
 //				motors.motor_out[1],
 //				motors.motor_out[3]);
-		hal.console->printf("RCTCI: %d\t RCTRI: %d\t", rc_channels[RC_CHANNEL_THROTTLE].control_in, rc_channels[RC_CHANNEL_THROTTLE].radio_in);
-		hal.console->printf("RCPCI: %d\t RCPRI: %d\t", rc_channels[RC_CHANNEL_PITCH].control_in, rc_channels[RC_CHANNEL_PITCH].radio_in);
-		hal.console->printf("RCRCI: %d\t RCRRI: %d\n", rc_channels[RC_CHANNEL_ROLL].control_in, rc_channels[RC_CHANNEL_ROLL].radio_in);
+//		hal.console->printf("RCTCI: %d\t RCTRI: %d\t", rc_channels[RC_CHANNEL_THROTTLE].control_in, rc_channels[RC_CHANNEL_THROTTLE].radio_in);
+//		hal.console->printf("RCPCI: %d\t RCPRI: %d\t", rc_channels[RC_CHANNEL_PITCH].control_in, rc_channels[RC_CHANNEL_PITCH].radio_in);
+//		hal.console->printf("RCRCI: %d\t RCRRI: %d\t", rc_channels[RC_CHANNEL_ROLL].control_in, rc_channels[RC_CHANNEL_ROLL].radio_in);
+//		hal.console->printf("RCYCI: %d\t RCYRI: %d\n", rc_channels[RC_CHANNEL_YAW].control_in, rc_channels[RC_CHANNEL_YAW].radio_in);
 	}
+
+
+	// run the attitude controllers
+	stabilize_run();
 
 	// Read RC values
-	uint16_t periods[8];
-	hal.rcin->read(periods, RC_CHANNEL_MAX+1);
-
-	for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
-		rc_channels[i].set_pwm(periods[i]);
-	}
-
-	// Update the servo_out for the throttle
-	if (periods[RC_CHANNEL_THROTTLE] < RC_THROTTLE_MIN + 50) {
-		attitude.set_throttle_out(0, false);
-	} else {
-		attitude.set_throttle_out(map(
-				periods[RC_CHANNEL_THROTTLE],
-				RC_THROTTLE_MIN,
-				RC_THROTTLE_MAX,
-				0,
-				1000), true);
-	}
-
-	// apply simple mode
-	control_roll            = rc_channels[RC_CHANNEL_ROLL].control_in;
-	control_pitch           = rc_channels[RC_CHANNEL_PITCH].control_in;
-
-	get_stabilize_roll(control_roll);
-	get_stabilize_pitch(control_pitch);
-
-	// update targets to rate controllers
-	update_rate_contoller_targets();
-
+//	uint16_t periods[8];
+//	hal.rcin->read(periods, RC_CHANNEL_MAX+1);
+//
+//	for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
+//		rc_channels[i].set_pwm(periods[i]);
+//	}
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED

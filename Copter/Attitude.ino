@@ -226,13 +226,33 @@ void stabilize_run()
 			target_roll,
 			target_pitch);
 
+#if DEBUG == ENABLED
+    hal.console->printf("RCRollCi: %d\t RollTarg: %d\t RCPitCi: %d\t PitTarg: %d\t",
+    		rc_channels[RC_CHANNEL_ROLL].control_in,
+			target_roll,
+			rc_channels[RC_CHANNEL_PITCH].control_in,
+			target_pitch);
+#endif
+
     // get pilot's desired yaw rate
     target_yaw_rate = get_pilot_desired_yaw_rate(
     		rc_channels[RC_CHANNEL_YAW].control_in);
 
+#if DEBUG == ENABLED
+    hal.console->printf("RCYawCi: %d\t YawTarg: %d\t",
+    		rc_channels[RC_CHANNEL_YAW].control_in,
+			target_yaw_rate);
+#endif
+
     // get pilot's desired throttle
     pilot_throttle_scaled = get_pilot_desired_throttle(
     		rc_channels[RC_CHANNEL_THROTTLE].control_in);
+
+#if DEBUG == ENABLED
+    hal.console->printf("RCThrotCi: %d\t ThrotTarg: %d\n",
+    		rc_channels[RC_CHANNEL_THROTTLE].control_in,
+			pilot_throttle_scaled);
+#endif
 
     // call attitude controller
     attitude.angle_ef_roll_pitch_rate_ef_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
@@ -300,7 +320,7 @@ int16_t get_pilot_desired_throttle(int16_t throttle_control)
     // check throttle is above, below or in the deadband
     if (throttle_control < THROTTLE_IN_MIDDLE) {
         // below the deadband
-        throttle_out = g.throttle_min + ((float)(throttle_control-g.throttle_min))*((float)(g.throttle_mid - g.throttle_min))/((float)(500-g.throttle_min));
+        throttle_out = THROTTLE_MIN_DEFAULT + ((float)(throttle_control-THROTTLE_MIN_DEFAULT))*((float)(g.throttle_mid - THROTTLE_MIN_DEFAULT))/((float)(500-THROTTLE_MIN_DEFAULT));
     }else if(throttle_control > THROTTLE_IN_MIDDLE) {
         // above the deadband
         throttle_out = g.throttle_mid + ((float)(throttle_control-500))*(float)(1000-g.throttle_mid)/500.0f;

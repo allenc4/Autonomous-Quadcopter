@@ -152,6 +152,9 @@ public:
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo        var_info[];
 
+    // Made public class variables for debugging purposes
+    int16_t motor_out[AP_MOTORS_MAX_NUM_MOTORS];    // final outputs sent to the motors
+
 protected:
 
     // output functions that should be overloaded by child classes

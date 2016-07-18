@@ -994,6 +994,18 @@ void AP_InertialSensor::update(void)
         }
         for (uint8_t i=0; i<_backend_count; i++) {
             _backends[i]->update();
+
+            // TODO - REMOVE BELOW
+#if DEBUG == ENABLED
+//            this->_accel[0] = Vector3f(
+//            		this->_accel[0].x,
+//					this->_accel[0].y,
+//					0);
+//            this->_gyro[0]  = Vector3f(
+//            		this->_gyro[0].x,
+//					this->_gyro[0].y,
+//					0);
+#endif
         }
 
         // adjust health status if a sensor has a non-zero error count
