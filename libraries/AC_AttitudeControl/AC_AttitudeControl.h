@@ -62,7 +62,8 @@ public:
         _pid_rate_yaw(pid_rate_yaw),
         _dt(AC_ATTITUDE_100HZ_DT),
         _angle_boost(0),
-        _acro_angle_switch(0)
+        _acro_angle_switch(0),
+		_angle_ef_roll_pitch_rate_ef_yaw_smooth_loop_count(0)
 		{
 			AP_Param::setup_object_defaults(this, var_info);
 
@@ -254,6 +255,8 @@ protected:
     Vector3f            _rate_bf_desired;       // body-frame feed forward rates
     int16_t             _angle_boost;           // used only for logging
     int16_t             _acro_angle_switch;           // used only for logging
+
+    uint32_t			_angle_ef_roll_pitch_rate_ef_yaw_smooth_loop_count;
 };
 
 #define AC_ATTITUDE_CONTROL_LOG_FORMAT(msg) { msg, sizeof(AC_AttitudeControl::log_Attitude),	\

@@ -62,11 +62,12 @@
 static void fast_loop();
 static void medium_loop();
 static void slow_loop();
+void rc_read();
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
-AP_Vehicle::MultiCopter aparm;
+AP_Vehicle::MultiCopter vechicleType;
 
 extern const AP_Param::Info var_info[];
 AP_Param param_loader(var_info);
@@ -75,7 +76,7 @@ Parameters g;
 
 // MPU6050 accel/gyro chip
 AP_InertialSensor ins;
-// Not formally used in this code. Only declared to create AHRS object
+// GPS and Barometer not formally used in this code. Only declared to create AHRS and AttitudeControl objects
 AP_GPS gps;
 #if CONFIG_BARO == HAL_BARO_BMP085
 static AP_Baro_BMP085 barometer;
@@ -123,12 +124,12 @@ AP_Compass_HMC5843 compass;
 ////////////////////////////////////////////////////////////////////////////////
 // SIMPLE Mode
 ////////////////////////////////////////////////////////////////////////////////
-static int16_t control_roll;
-static int16_t control_pitch;
+int16_t control_roll;
+int16_t control_pitch;
 
 uint32_t lastModeSelectTime;
 uint32_t modeSelectTimer;
-int lastMode;
+int16_t lastMode;
 
 // Roll and pitch trim values
 float trim_roll, trim_pitch;
@@ -161,7 +162,7 @@ AP_MotorsQuad motors(rc_channels[RC_CHANNEL_ROLL],
 		rc_channels[RC_CHANNEL_YAW]);
 
 AP_AHRS_DCM ahrs(ins, barometer, gps);
-AC_AttitudeControl attitude(ahrs, aparm, motors, g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
+AC_AttitudeControl attitude(ahrs, vechicleType, motors, g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
         g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
 // The Commanded ROll based on optical flow sensor.
@@ -199,7 +200,8 @@ void setup()
 
 	loop_count = 0;
 
-
+	// Set the maximum tilt angles
+	vechicleType.angle_max = DEFAULT_ANGLE_MAX;
 	// Initialize PID array
 	pids[PID_PITCH_RATE].kP(PITCH_RATE_P);
 //	pids[PID_PITCH_RATE].kI(PITCH_RATE_I);
@@ -304,13 +306,17 @@ void setup()
 	// Setup RC receiver
 	Setup_RC_Channels();
 
+
 	// Setup motors for output
 	Setup_Motors();
+
 
 	// Turn on green/blue light
 	a_led->write(HAL_GPIO_LED_OFF);
 	b_led->write(HAL_GPIO_LED_OFF);
 	c_led->write(HAL_GPIO_LED_ON);
+
+	lastMode = NO_MODE;
 
 }
 
@@ -352,32 +358,6 @@ static void fast_loop() {
     // IMU DCM Algorithm
     ahrs.update();
 
-//	uint16_t channels[8];
-//	hal.rcin->read(channels, 8);
-//
-//	// Scale the yaw, roll, and pitch values in the rc_channels array
-//	rc_channels[RC_CHANNEL_YAW] = map(
-//			channels[RC_CHANNEL_YAW],
-//			RC_YAW_MIN,
-//			RC_YAW_MAX,
-//			RC_YAW_MIN_SCALED,
-//			RC_YAW_MAX_SCALED);
-//
-//	rc_channels[RC_CHANNEL_ROLL] = map(
-//			channels[RC_CHANNEL_ROLL],
-//			RC_ROLL_MIN,
-//			RC_ROLL_MAX,
-//			RC_ROLL_MIN_SCALED,
-//			RC_ROLL_MAX_SCALED);
-//
-//	rc_channels[RC_CHANNEL_PITCH] = -map(
-//			channels[RC_CHANNEL_PITCH],
-//			RC_PITCH_MIN,
-//			RC_PITCH_MAX,
-//			RC_PITCH_MIN_SCALED,
-//			RC_PITCH_MAX_SCALED);
-//
-//	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
 
 //	if (DEBUG == ENABLED) {
 //		if (loop_count % 20 == 0) {
@@ -392,87 +372,81 @@ static void fast_loop() {
 //		}
 //	}
 
+    rc_read();
 	// DEBUGGING PURPOSES ONLY ///////////////////////////////
-	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(RC_THROTTLE_MIN + 400);
-	rc_channels[RC_CHANNEL_ROLL].set_pwm((RC_ROLL_MIN + RC_ROLL_MAX)/2);
-	rc_channels[RC_CHANNEL_PITCH].set_pwm((RC_PITCH_MIN + RC_PITCH_MAX)/2);
-	rc_channels[RC_CHANNEL_YAW].set_pwm((RC_YAW_MIN + RC_YAW_MAX)/2);
+//	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(RC_THROTTLE_MIN + 400);
+//	rc_channels[RC_CHANNEL_ROLL].set_pwm((RC_ROLL_MIN + RC_ROLL_MAX)/2);
+//	rc_channels[RC_CHANNEL_PITCH].set_pwm((RC_PITCH_MIN + RC_PITCH_MAX)/2);
+//	rc_channels[RC_CHANNEL_YAW].set_pwm((RC_YAW_MIN + RC_YAW_MAX)/2);
 
-	if((rc_channels[RC_CHANNEL_THROTTLE].radio_in <= RC_THROTTLE_MIN + 75 &&
-			rc_channels[RC_CHANNEL_YAW].radio_in > (RC_YAW_MAX_SCALED - 25)))
-	{
-		if(lastMode != ACCEL_CALIBRATE_MODE)
-		{
-			lastModeSelectTime = hal.scheduler->millis();
-			modeSelectTimer = 0;
-			lastMode = ACCEL_CALIBRATE_MODE;
-		}
-
-		uint32_t currentTime = hal.scheduler->millis();
-		modeSelectTimer += currentTime - lastModeSelectTime;
-		lastModeSelectTime = currentTime;
-	}
-
-	if((lastMode == ACCEL_CALIBRATE_MODE && modeSelectTimer > MODE_SELECT_TIME) ||
-			ACCEL_CALIBRATE == ENABLED){
-		//flash the leds 3 times so we know it needs to be calibrated
-		for(int i = 0; i < 4; i++)
-		{
-			a_led->write(HAL_GPIO_LED_OFF);
-			b_led->write(HAL_GPIO_LED_OFF);
-			c_led->write(HAL_GPIO_LED_OFF);
-			hal.scheduler->delay(1000);
-			a_led->write(HAL_GPIO_LED_ON);
-			b_led->write(HAL_GPIO_LED_ON);
-			c_led->write(HAL_GPIO_LED_ON);
-			hal.scheduler->delay(1000);
-		}
-
-		float roll_trim, pitch_trim;
-		AP_InertialSensor_UserInteractStream interact(hal.console);
-		if(!ins.calibrate_accel(&interact, roll_trim, pitch_trim)){
-			while (true) {
-				a_led->write(HAL_GPIO_LED_OFF);
-				hal.scheduler->delay(1000);
-				a_led->write(HAL_GPIO_LED_ON);
-				hal.scheduler->delay(1000);
+	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in <= rc_channels[RC_CHANNEL_THROTTLE].radio_min  + 75) {
+		if (rc_channels[RC_CHANNEL_YAW].radio_in > (rc_channels[RC_CHANNEL_YAW].radio_max - 25)) {
+			if(lastMode != MOTORS_ARMED)
+			{
+				lastModeSelectTime = hal.scheduler->millis();
+				modeSelectTimer = 0;
+				lastMode = MOTORS_ARMED;
 			}
+
+			uint32_t currentTime = hal.scheduler->millis();
+			modeSelectTimer += currentTime - lastModeSelectTime;
+			lastModeSelectTime = currentTime;
+
+		} else if (rc_channels[RC_CHANNEL_YAW].radio_in < (rc_channels[RC_CHANNEL_YAW].radio_min  + 25)) {
+
+			if(lastMode != MOTORS_DISARMED)
+			{
+				lastModeSelectTime = hal.scheduler->millis();
+				modeSelectTimer = 0;
+				lastMode = MOTORS_DISARMED;
+			}
+
+			uint32_t currentTime = hal.scheduler->millis();
+			modeSelectTimer += currentTime - lastModeSelectTime;
+			lastModeSelectTime = currentTime;
 		}
 
-//		ins.push_accel_offsets_to_dmp();
-//		ins.push_gyro_offsets_to_dmp();
-		lastMode = NO_MODE;
-		modeSelectTimer = 0;
 	}
+
+	if(modeSelectTimer > MODE_SELECT_TIME) {
+		switch (lastMode) {
+		case MOTORS_ARMED:
+			hal.console->print("motors armed\n");
+			motors.armed(true);
+			break;
+		case MOTORS_DISARMED:
+			hal.console->print("motors disarmed\n");
+			motors.armed(false);
+			break;
+		}
+		modeSelectTimer = 0;
+		lastMode = NO_MODE;
+	}
+
+
 
 	// run low level rate controllers that only require IMU data
 	attitude.rate_controller_run();
 
-	// output to motors
+	// Only output to motors if we are armed
 	motors.output();
-	if (DEBUG == ENABLED && loop_count % 20 == 0) {
-//		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\t",
-//				motors.motor_out[2],
-//				motors.motor_out[0],
-//				motors.motor_out[1],
-//				motors.motor_out[3]);
+
+#if DEBUG == ENABLED
+	if (loop_count % 20 == 0) {
+		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\n",
+				motors.motor_out[2],
+				motors.motor_out[0],
+				motors.motor_out[1],
+				motors.motor_out[3]);
 //		hal.console->printf("RCTCI: %d\t RCTRI: %d\t", rc_channels[RC_CHANNEL_THROTTLE].control_in, rc_channels[RC_CHANNEL_THROTTLE].radio_in);
 //		hal.console->printf("RCPCI: %d\t RCPRI: %d\t", rc_channels[RC_CHANNEL_PITCH].control_in, rc_channels[RC_CHANNEL_PITCH].radio_in);
 //		hal.console->printf("RCRCI: %d\t RCRRI: %d\t", rc_channels[RC_CHANNEL_ROLL].control_in, rc_channels[RC_CHANNEL_ROLL].radio_in);
 //		hal.console->printf("RCYCI: %d\t RCYRI: %d\n", rc_channels[RC_CHANNEL_YAW].control_in, rc_channels[RC_CHANNEL_YAW].radio_in);
 	}
-
+#endif
 
 	// run the attitude controllers
 	stabilize_run();
-
-	// Read RC values
-//	uint16_t periods[8];
-//	hal.rcin->read(periods, RC_CHANNEL_MAX+1);
-//
-//	for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
-//		rc_channels[i].set_pwm(periods[i]);
-//	}
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED
@@ -487,9 +461,6 @@ static void fast_loop() {
 
 #endif
 #endif
-
-	// Output throttle response to motors
-	motors.output();
 }
 
 static void medium_loop() {
@@ -501,6 +472,14 @@ static void medium_loop() {
 static void slow_loop() {
 
 	// TODO - Check failsafes
+}
+
+void rc_read() {
+	// Read RC values
+	rc_channels[RC_CHANNEL_ROLL].set_pwm(hal.rcin->read(RC_CHANNEL_ROLL));
+	rc_channels[RC_CHANNEL_PITCH].set_pwm(hal.rcin->read(RC_CHANNEL_PITCH));
+	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(hal.rcin->read(RC_CHANNEL_THROTTLE));
+	rc_channels[RC_CHANNEL_YAW].set_pwm(hal.rcin->read(RC_CHANNEL_YAW));
 }
 
 /**

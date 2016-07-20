@@ -226,39 +226,39 @@ void stabilize_run()
 			target_roll,
 			target_pitch);
 
-#if DEBUG == ENABLED
-    if (loop_count % 20 == 0) {
-		hal.console->printf("RCRollCi: %d\t RollTarg: %d\t RCPitCi: %d\t PitTarg: %d\t",
-				rc_channels[RC_CHANNEL_ROLL].control_in,
-				target_roll,
-				rc_channels[RC_CHANNEL_PITCH].control_in,
-				target_pitch);
-    }
-#endif
+//#if DEBUG == ENABLED
+//    if (loop_count % 20 == 0) {
+//		hal.console->printf("RCRollCi: %d\t RollTarg: %d\t RCPitCi: %d\t PitTarg: %d\t",
+//				rc_channels[RC_CHANNEL_ROLL].control_in,
+//				target_roll,
+//				rc_channels[RC_CHANNEL_PITCH].control_in,
+//				target_pitch);
+//    }
+//#endif
 
     // get pilot's desired yaw rate
     target_yaw_rate = get_pilot_desired_yaw_rate(
     		rc_channels[RC_CHANNEL_YAW].control_in);
 
-#if DEBUG == ENABLED
-    if (loop_count % 20 == 0) {
-		hal.console->printf("RCYawCi: %d\t YawTarg: %d\t",
-				rc_channels[RC_CHANNEL_YAW].control_in,
-				target_yaw_rate);
-    }
-#endif
+//#if DEBUG == ENABLED
+//    if (loop_count % 20 == 0) {
+//		hal.console->printf("RCYawCi: %d\t YawTarg: %d\t",
+//				rc_channels[RC_CHANNEL_YAW].control_in,
+//				target_yaw_rate);
+//    }
+//#endif
 
     // get pilot's desired throttle
     pilot_throttle_scaled = get_pilot_desired_throttle(
     		rc_channels[RC_CHANNEL_THROTTLE].control_in);
 
-#if DEBUG == ENABLED
-    if (loop_count % 20 == 0) {
-		hal.console->printf("RCThrotCi: %d\t ThrotTarg: %d\n",
-				rc_channels[RC_CHANNEL_THROTTLE].control_in,
-				pilot_throttle_scaled);
-    }
-#endif
+//#if DEBUG == ENABLED
+//    if (loop_count % 20 == 0) {
+//		hal.console->printf("RCThrotCi: %d\t ThrotTarg: %d\n",
+//				rc_channels[RC_CHANNEL_THROTTLE].control_in,
+//				pilot_throttle_scaled);
+//    }
+//#endif
 
     // call attitude controller
     attitude.angle_ef_roll_pitch_rate_ef_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
@@ -281,16 +281,16 @@ void get_pilot_desired_lean_angles(int16_t roll_in, int16_t pitch_in, int16_t &r
     pitch_in = constrain_int16(pitch_in, -ROLL_PITCH_INPUT_MAX, ROLL_PITCH_INPUT_MAX);
 
     // return filtered roll if no scaling required
-    if (aparm.angle_max == ROLL_PITCH_INPUT_MAX) {
+    if (vechicleType.angle_max == ROLL_PITCH_INPUT_MAX) {
         roll_out = roll_in;
         pitch_out = pitch_in;
         return;
     }
 
     // check if angle_max has been updated and redo scaler
-    if (aparm.angle_max != _angle_max) {
-        _angle_max = aparm.angle_max;
-        _scaler = (float)aparm.angle_max/(float)ROLL_PITCH_INPUT_MAX;
+    if (vechicleType.angle_max != _angle_max) {
+        _angle_max = vechicleType.angle_max;
+        _scaler = (float)vechicleType.angle_max/(float)ROLL_PITCH_INPUT_MAX;
     }
 
     // convert pilot input to lean angle

@@ -54,6 +54,15 @@ AP_AHRS_DCM::update(void)
 
     // tell the IMU to grab some data
     _ins.update();
+//    if (_update_loop_count % 20 == 0) {
+//		hal.console->printf("Accel(%4.2f, %4.2f, %4.2f)\t Gyro(%4.2f, %4.2f, %4.2f)\n",
+//				_ins.get_accel().x,
+//				_ins.get_accel().y,
+//				_ins.get_accel().z,
+//				_ins.get_gyro().x,
+//				_ins.get_gyro().y,
+//				_ins.get_gyro().z);
+//    }
 
     // ask the IMU how much time this sensor reading represents
     delta_t = _ins.get_delta_time();
@@ -70,6 +79,13 @@ AP_AHRS_DCM::update(void)
     // Integrate the DCM matrix using gyro inputs
     matrix_update(delta_t);
 
+//    if (_update_loop_count % 20 == 0) {
+//    	hal.console->printf("[%4.2f, %4.2f, %4.2f]\n[%4.2f, %4.2f, %4.2f]\n[%4.2f, %4.2f, %4.2f]\n",
+//    	_dcm_matrix.a.x, _dcm_matrix.a.y, _dcm_matrix.a.z,
+//		_dcm_matrix.b.x, _dcm_matrix.b.y, _dcm_matrix.b.z,
+//		_dcm_matrix.c.x, _dcm_matrix.c.y, _dcm_matrix.c.z);
+//    }
+
     // Normalize the DCM matrix
     normalize();
 
@@ -84,6 +100,8 @@ AP_AHRS_DCM::update(void)
 
     // update trig values including _cos_roll, cos_pitch
     update_trig();
+
+    _update_loop_count++;
 
 }
 
@@ -858,6 +876,21 @@ AP_AHRS_DCM::euler_angles(void)
     _body_dcm_matrix.to_euler(&roll, &pitch, &yaw);
 
     update_cd_values();
+//    if (_update_loop_count % 20 == 0) {
+//    	hal.console->print("Roll: (");
+//    	hal.console->print(roll);
+//    	hal.console->print(", ");
+//    	hal.console->print(roll_sensor);
+//    	hal.console->print(")\t Pitch: (");
+//    	hal.console->print(pitch);
+//    	hal.console->print(", ");
+//    	hal.console->print(pitch_sensor);
+//    	hal.console->print(")\t Yaw: (");
+//    	hal.console->print(yaw);
+//    	hal.console->print(", ");
+//    	hal.console->print(yaw_sensor);
+//    	hal.console->print(")\n");
+//   }
 }
 
 /* reporting of DCM state for MAVLink */

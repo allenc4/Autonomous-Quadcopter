@@ -50,7 +50,8 @@ public:
         _last_wind_time(0),
         _last_airspeed(0.0f),
         _last_consistent_heading(0),
-        _last_failure_ms(0)
+        _last_failure_ms(0),
+	    _update_loop_count(0)
     {
         _dcm_matrix.identity();
 
@@ -197,6 +198,9 @@ private:
 
     // last time AHRS failed in milliseconds
     uint32_t _last_failure_ms;
+
+    uint32_t _update_loop_count;
+
 };
 
 #endif // __AP_AHRS_DCM_H__

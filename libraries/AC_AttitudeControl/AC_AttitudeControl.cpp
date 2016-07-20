@@ -3,6 +3,8 @@
 #include "AC_AttitudeControl.h"
 #include <AP_HAL.h>
 
+extern const AP_HAL::HAL &hal;
+
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl::var_info[] PROGMEM = {
 
@@ -158,6 +160,11 @@ void AC_AttitudeControl::angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle
     _angle_ef_target.x = constrain_float(_angle_ef_target.x, -_aparm.angle_max, _aparm.angle_max);
     _angle_ef_target.y = constrain_float(_angle_ef_target.y, -_aparm.angle_max, _aparm.angle_max);
 
+//    if (_angle_ef_roll_pitch_rate_ef_yaw_smooth_loop_count % 20 == 0) {
+//			hal.console->printf("_angle_ef_target(%4.2f, %4.2f)\t angle_max: %d\n",
+//					_angle_ef_target.x, _angle_ef_target.y, _aparm.angle_max);
+//		}
+
     if (_accel_y_max > 0.0f) {
     	// set earth-frame feed forward rate for yaw
         rate_change_limit = _accel_y_max * _dt;
@@ -191,6 +198,8 @@ void AC_AttitudeControl::angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle
         frame_conversion_ef_to_bf(Vector3f(0,0,_rate_ef_desired.z), _rate_bf_desired);
         _rate_bf_target += _rate_bf_desired;
     }
+
+    _angle_ef_roll_pitch_rate_ef_yaw_smooth_loop_count++;
 
     // body-frame to motor outputs should be called separately
 }

@@ -59,7 +59,7 @@ bool Init_Arducopter() {
 	// Reset gyro
 	ahrs.reset_gyro_drift();
 
-	if(!ins.calibrated()){
+	if(!ins.calibrated() || ACCEL_CALIBRATE == ENABLED){
 		//flash the leds 3 times so we know it needs to be calibrated
 		for(int i = 0; i < 4; i++)
 		{
@@ -182,7 +182,7 @@ void Setup_Motors() {
 	motors.set_update_rate(RC_FAST_SPEED);
 	motors.set_frame_orientation(AP_MOTORS_X_FRAME);
 	motors.Init();
-//	motors.set_min_throttle(0);
+	motors.set_min_throttle(100);
 //	motors.set_max_throttle(1000);
 
 	for(uint8_t i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
@@ -190,7 +190,9 @@ void Setup_Motors() {
 		rc_channels[i].set_pwm(hal.rcin->read(i));
 	}
 
-	motors.armed(true);
+	// All setup stuff is done so we want the motors enabled, but we don't want the motors to spin until the pilot is ready
+	motors.enable();
+	motors.armed(false);
 }
 
 void Setup_RC_Channels() {
@@ -215,11 +217,19 @@ void Setup_RC_Channels() {
 	rc_channels[RC_CHANNEL_THROTTLE].set_range_out(0, 1000);
 
 	// Set trim values to be in the middle for roll, pitch, yaw and min for throttle
-	rc_channels[RC_CHANNEL_ROLL].set_pwm((RC_ROLL_MIN + RC_ROLL_MAX)/2);
-	rc_channels[RC_CHANNEL_PITCH].set_pwm((RC_PITCH_MIN + RC_PITCH_MAX)/2);
-	rc_channels[RC_CHANNEL_YAW].set_pwm((RC_YAW_MIN + RC_YAW_MAX)/2);
-	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(RC_THROTTLE_MIN);
-	for (int i = 0; i <= 4; i++) {
+	for (int i = 0; i < 30; i++) {
+		// Read RC values
+		uint16_t periods[8];
+		hal.rcin->read(periods, RC_CHANNEL_MAX+1);
+
+		for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
+			rc_channels[i].set_pwm(periods[i]);
+		}
+
+		hal.scheduler->delay(20);
+	}
+
+	for (int i = 0; i < 4; i++) {
 		rc_channels[i].trim();
 	}
 

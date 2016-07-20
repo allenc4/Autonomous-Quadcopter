@@ -15,7 +15,7 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG			ENABLED
+#define DEBUG			DISABLED
 #define ESC_CALIBRATE	DISABLED
 #define ACCEL_CALIBRATE DISABLED
 
@@ -32,9 +32,11 @@
 #define CONFIG_BARO     HAL_BARO_DEFAULT
 
 //modes
-#define MODE_SELECT_TIME		5000
+#define MODE_SELECT_TIME		1500
 #define NO_MODE					0
 #define ACCEL_CALIBRATE_MODE 	1
+#define MOTORS_ARMED			2
+#define MOTORS_DISARMED			3
 
 //////////////////////////////////////////////////////////////////////////////
 // HARDWARE CONFIGURATION AND CONNECTIONS

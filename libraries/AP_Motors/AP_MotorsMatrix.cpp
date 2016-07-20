@@ -338,7 +338,16 @@ void AP_MotorsMatrix::output_armed()
 void AP_MotorsMatrix::output_disarmed()
 {
     // Send minimum values to all motors
-    output_min();
+//    output_min();
+
+	// Send zero values to all motors
+
+    for(int i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++ ) {
+        if( motor_enabled[i] ) {
+        	motor_out[i] = 0;
+            hal.rcout->write(pgm_read_byte(&_motor_to_channel_map[i]), 0);
+        }
+    }
 }
 
 // output_test - spin a motor at the pwm value specified
