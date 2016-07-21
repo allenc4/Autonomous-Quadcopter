@@ -20,7 +20,7 @@
 #define ACCEL_CALIBRATE DISABLED
 
 // Enable lIDAR Lite range finder
-#define LIDAR			DISABLED
+#define LIDAR			ENABLED
 
 // Optical Flow sensor
 #define OPTFLOW			DISABLED

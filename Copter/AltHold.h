@@ -11,6 +11,7 @@
 #include "RangeFinder.h"
 #include "PID.h"
 #include "AP_Math.h"
+#include "Radio.h"
 
 
 #define ALTHOLD_HOLDING 					0
