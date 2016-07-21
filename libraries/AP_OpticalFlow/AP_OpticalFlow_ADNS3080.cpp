@@ -198,6 +198,10 @@ void AP_OpticalFlow_ADNS3080::update(void)
     rot_vector.rotate(_orientation);
     dx = rot_vector.x;
     dy = rot_vector.y;
+
+    x += dx;
+    y += dy;
+
 }
 
 // parent method called at 1khz by periodic process

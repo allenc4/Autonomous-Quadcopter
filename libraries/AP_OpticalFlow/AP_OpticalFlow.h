@@ -37,6 +37,8 @@ public:
     // constructor
     AP_OpticalFlow() {
         _flags.healthy = false;
+        x = 0;
+        y = 0;
     };
 
     virtual void init();
@@ -64,6 +66,7 @@ public:
 
     // public variables for reporting purposes
     float    x_cm, y_cm;                    // x,y position in cm
+    float	 x, y;
 
 protected:
 

@@ -136,6 +136,8 @@ AC_AttitudeControl attitude(ahrs,
 		g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
         g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
+int8_t flightMode;
+
 // The Commanded ROll based on optical flow sensor.
 int32_t of_roll;
 // The Commanded PITCH based on optical flow sensor. Negative pitch means go forward.
@@ -173,6 +175,9 @@ void setup()
 	Parameters::load_parameters();
 
 	loop_count = 0;
+
+	// Initialize flight mode to stable
+	flightMode = FLIGHT_MODE_STABLE;
 
 	// Set the maximum tilt angles
 	vechicleType.angle_max = DEFAULT_ANGLE_MAX;
@@ -308,11 +313,22 @@ void fast_loop() {
 
 	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in <= rc_channels[RC_CHANNEL_THROTTLE].radio_min  + 75) {
 		if (rc_channels[RC_CHANNEL_YAW].radio_in > (rc_channels[RC_CHANNEL_YAW].radio_max - 25)) {
-			if(lastMode != MOTORS_ARMED)
+			if (motors.armed())
 			{
-				lastModeSelectTime = hal.scheduler->millis();
-				modeSelectTimer = 0;
-				lastMode = MOTORS_ARMED;
+				if (lastMode != CHANGE_FLIGHT_MODE) {
+					lastModeSelectTime = hal.scheduler->millis();
+					modeSelectTimer = 0;
+					lastMode = CHANGE_FLIGHT_MODE;
+				}
+			} else
+			{
+				if(lastMode != MOTORS_ARMED)
+				{
+					lastModeSelectTime = hal.scheduler->millis();
+					modeSelectTimer = 0;
+					lastMode = MOTORS_ARMED;
+				}
+
 			}
 
 			uint32_t currentTime = hal.scheduler->millis();
@@ -331,9 +347,10 @@ void fast_loop() {
 			uint32_t currentTime = hal.scheduler->millis();
 			modeSelectTimer += currentTime - lastModeSelectTime;
 			lastModeSelectTime = currentTime;
-		}
 
-	}
+		} // end if - yaw is all the way to the left
+
+	} // end if - throttle is all the way down
 
 	if(modeSelectTimer > MODE_SELECT_TIME) {
 		switch (lastMode) {
@@ -345,6 +362,37 @@ void fast_loop() {
 			hal.console->print("motors disarmed\n");
 			motors.armed(false);
 			break;
+		case CHANGE_FLIGHT_MODE:
+			if (flightMode == FLIGHT_MODE_STABLE) {
+#if OPTFLOW == ENABLED
+				flightMode = FLIGHT_MODE_OPTSTABLE;
+				// Turn on the B and C LEDs
+				a_led->write(HAL_GPIO_LED_OFF);
+				b_led->write(HAL_GPIO_LED_ON);
+				c_led->write(HAL_GPIO_LED_ON);
+
+#if DEBUG == ENABLED
+				hal.console->println("Switching flight mode to optical flow stabilize");
+#endif
+#endif
+			} else if (flightMode == FLIGHT_MODE_OPTSTABLE) {
+				flightMode = FLIGHT_MODE_STABLE;
+
+				// Turn on the C LED only
+				a_led->write(HAL_GPIO_LED_OFF);
+				b_led->write(HAL_GPIO_LED_OFF);
+				c_led->write(HAL_GPIO_LED_ON);
+
+#if DEBUG == ENABLED
+				hal.console->println("Switching flight mode to normal stabilize");
+#endif
+			}
+
+			// Make motors beep to let pilot know we are switching modes
+			motors.set_update_rate(RC_SLOW_SPEED);
+			hal.scheduler->delay(50);
+			motors.set_update_rate(RC_FAST_SPEED);
+			hal.scheduler->delay(50);
 		}
 		modeSelectTimer = 0;
 		lastMode = NO_MODE;
@@ -370,10 +418,14 @@ void fast_loop() {
 
 	// run the attitude controllers
 #if OPTFLOW == ENABLED
-	ofLoiter_run();
-#else
-	stabilize_run();
+	if (flightMode == FLIGHT_MODE_OPTSTABLE) {
+		ofLoiter_run();
+	}
 #endif
+
+	if (flightMode == FLIGHT_MODE_STABLE) {
+		stabilize_run();
+	}
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED

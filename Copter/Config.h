@@ -39,6 +39,10 @@
 #define ACCEL_CALIBRATE_MODE 	1
 #define MOTORS_ARMED			2
 #define MOTORS_DISARMED			3
+#define CHANGE_FLIGHT_MODE		4
+
+#define FLIGHT_MODE_STABLE		0
+#define	FLIGHT_MODE_OPTSTABLE	1
 
 //////////////////////////////////////////////////////////////////////////////
 // HARDWARE CONFIGURATION AND CONNECTIONS
