@@ -13,8 +13,8 @@
 #include <AP_Motors.h>			// Motors Library
 
 #include "Config.h"
-#include "Radio.h"
 #include "OpticalFlow.h"
+#include "RadioController.h"
 #if LIDAR == ENABLED
 #include "AltHold.h"
 #endif
@@ -22,14 +22,14 @@
 class MotorsClass {
 
 public:
-	MotorsClass(Radio radio);
+	MotorsClass(RadioController radio);
 	AP_MotorsQuad *getMotors();
 	void init();
 	void output(uint16_t motor_num, uint16_t pwm);
 	void calibrate_ESCs();
 
 private:
-	Radio *_radio;
+	RadioController *_radio;
 	AP_MotorsQuad *_motors;
 	const int8_t min_throttle_offset = 75;
 #if LIDAR == ENABLED

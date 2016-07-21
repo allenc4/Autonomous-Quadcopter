@@ -27,6 +27,8 @@ public:
 	bool init();
 	void update();
 
+	void reset_I();
+
 	// calculate modified roll/pitch depending upon optical flow calculated position
 	int32_t get_of_roll(int32_t input_roll, int32_t input_yaw);
 	int32_t get_of_pitch(int32_t input_pitch, int32_t input_yaw);
@@ -41,6 +43,8 @@ private:
 	uint32_t last_of_update;
 	uint32_t last_of_roll_update;
 	uint32_t last_of_pitch_update;
+
+	int32_t _of_roll, _of_pitch;
 };
 
 #endif /* OPTICALFLOW_H_ */

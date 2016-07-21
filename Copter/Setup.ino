@@ -166,3 +166,72 @@ void flashLeds(bool flash){
 	}
 
 }
+
+/**
+ * Enables output to the motors and sends a 490Hz pulse to negate ESC averaging filter effect
+ */
+void Setup_Motors() {
+
+	if (DEBUG) {
+		hal.console->println("Setting up motors.");
+	}
+
+	// Enable output to the motors
+//	hal.rcout->set_freq(0xF, RC_FAST_SPEED);  // Send 490Hz pulse to negate ESC averaging filter effect
+//	hal.rcout->enable_mask(0xFF);
+
+	motors.set_update_rate(RC_FAST_SPEED);
+	motors.set_frame_orientation(AP_MOTORS_X_FRAME);
+	motors.Init();
+	motors.set_min_throttle(100);
+//	motors.set_max_throttle(1000);
+
+	for(uint8_t i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
+		hal.scheduler->delay(20);
+		rc_channels[i].set_pwm(hal.rcin->read(i));
+	}
+
+	// All setup stuff is done so we want the motors enabled, but we don't want the motors to spin until the pilot is ready
+	motors.enable();
+	motors.armed(false);
+}
+
+void Setup_RC_Channels() {
+	rc_channels[RC_CHANNEL_ROLL].radio_min = RC_ROLL_MIN;
+	rc_channels[RC_CHANNEL_ROLL].radio_max = RC_ROLL_MAX;
+	rc_channels[RC_CHANNEL_ROLL].set_angle(4500);
+	rc_channels[RC_CHANNEL_ROLL].set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+
+	rc_channels[RC_CHANNEL_PITCH].radio_min = RC_PITCH_MIN;
+	rc_channels[RC_CHANNEL_PITCH].radio_max = RC_PITCH_MAX;
+	rc_channels[RC_CHANNEL_PITCH].set_angle(4500);
+	rc_channels[RC_CHANNEL_PITCH].set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+
+	rc_channels[RC_CHANNEL_YAW].radio_min = RC_YAW_MIN;
+	rc_channels[RC_CHANNEL_YAW].radio_max = RC_YAW_MAX;
+	rc_channels[RC_CHANNEL_YAW].set_angle(4500);
+	rc_channels[RC_CHANNEL_YAW].set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+
+	rc_channels[RC_CHANNEL_THROTTLE].radio_min = RC_THROTTLE_MIN;
+	rc_channels[RC_CHANNEL_THROTTLE].radio_max = RC_THROTTLE_MAX;
+	rc_channels[RC_CHANNEL_THROTTLE].set_range(0, 1000);
+	rc_channels[RC_CHANNEL_THROTTLE].set_range_out(0, 1000);
+
+	// Set trim values to be in the middle for roll, pitch, yaw and min for throttle
+	for (int i = 0; i < 30; i++) {
+		// Read RC values
+		uint16_t periods[8];
+		hal.rcin->read(periods, RC_CHANNEL_MAX+1);
+
+		for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
+			rc_channels[i].set_pwm(periods[i]);
+		}
+
+		hal.scheduler->delay(20);
+	}
+
+	for (int i = 0; i < 4; i++) {
+		rc_channels[i].trim();
+	}
+
+}

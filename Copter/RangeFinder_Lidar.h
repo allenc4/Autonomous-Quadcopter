@@ -24,6 +24,10 @@ public:
 	bool init();
 	bool update();
 	bool update(uint16_t &distance);
+	uint16_t getStartingDistanceOffset();
+
+private:
+	uint16_t _starting_distance_offset;
 };
 
 

@@ -9,6 +9,9 @@ float get_smoothing_gain()
     return (2.0f + (float) RC_FEEL_RP_MEDIUM / 10.0f);
 }
 
+/**
+ * Stablilize mode... Levels quadcopter based on input from pilot RC
+ */
 void stabilize_run()
 {
     int16_t target_roll, target_pitch;
@@ -16,7 +19,7 @@ void stabilize_run()
     int16_t pilot_throttle_scaled;
 
     // if not armed or throttle at zero, set throttle to zero and exit immediately
-    if(!motors.getMotors()->armed() || radio.getRCThrottle()->control_in <= 0) {
+    if(!motors.armed() || rc_channels[RC_CHANNEL_THROTTLE].control_in <= 0) {
         attitude.relax_bf_rate_controller();
         attitude.set_yaw_target_to_current_heading();
         attitude.set_throttle_out(0, false);
@@ -24,8 +27,8 @@ void stabilize_run()
     }
 
     // convert pilot input to lean angles
-    get_pilot_desired_lean_angles(radio.getRCRoll()->control_in,
-    		radio.getRCPitch()->control_in,
+    get_pilot_desired_lean_angles(rc_channels[RC_CHANNEL_ROLL].control_in,
+    		rc_channels[RC_CHANNEL_PITCH].control_in,
 			target_roll,
 			target_pitch);
 
@@ -41,7 +44,7 @@ void stabilize_run()
 
     // get pilot's desired yaw rate
     target_yaw_rate = get_pilot_desired_yaw_rate(
-    		radio.getRCYaw()->control_in);
+    		rc_channels[RC_CHANNEL_YAW].control_in);
 
 //#if DEBUG == ENABLED
 //    if (loop_count % 20 == 0) {
@@ -53,7 +56,7 @@ void stabilize_run()
 
     // get pilot's desired throttle
     pilot_throttle_scaled = get_pilot_desired_throttle(
-    		radio.getRCThrottle()->control_in);
+    		rc_channels[RC_CHANNEL_THROTTLE].control_in);
 
 //#if DEBUG == ENABLED
 //    if (loop_count % 20 == 0) {
@@ -71,6 +74,73 @@ void stabilize_run()
     // output pilot's throttle
     attitude.set_throttle_out(pilot_throttle_scaled, true);
 }
+
+/**
+ * Stabilizes mode based on pilots input and optical flow sensor readings to attempt to
+ * keep vehicle at a stationary pitch/roll
+ */
+#if LIDAR == ENABLED && OPTFLOW == ENABLED
+void ofLoiter_run()
+{
+    int16_t target_roll, target_pitch, pilot_throttle_scaled;
+    float target_yaw_rate = 0;
+
+
+    // if not armed or throttle at zero, set throttle to zero and exit immediately
+   if(!motors.armed() || rc_channels[RC_CHANNEL_THROTTLE].control_in <= 0) {
+	   attitude.relax_bf_rate_controller();
+	   attitude.set_yaw_target_to_current_heading();
+	   attitude.set_throttle_out(0, false);
+	   return;
+   }
+
+   // convert pilot input to lean angles
+   get_pilot_desired_lean_angles(rc_channels[RC_CHANNEL_ROLL].control_in,
+		rc_channels[RC_CHANNEL_PITCH].control_in,
+		target_roll,
+		target_pitch);
+
+   // get pilot's desired yaw rate
+   target_yaw_rate = get_pilot_desired_yaw_rate(
+		rc_channels[RC_CHANNEL_YAW].control_in);
+
+   // get pilot's desired throttle
+  pilot_throttle_scaled = get_pilot_desired_throttle(
+		rc_channels[RC_CHANNEL_THROTTLE].control_in);
+
+   // Check to see if we have landed (+/- 2 cm from the initial starting position)
+  bool landed = (lidar->getLastDistance() <= 2) && pilot_throttle_scaled < 100;
+
+    // when landed reset targets and output zero throttle
+    if (landed) {
+        attitude.relax_bf_rate_controller();
+        attitude.set_yaw_target_to_current_heading();
+        // move throttle to between minimum and non-takeoff-throttle to keep us on the ground
+        attitude.set_throttle_out(motors.throttle_min(), false);
+        opticalFlow.reset_I();
+    }else{
+        // mix in user control with optical flow
+        target_roll  = opticalFlow.get_of_roll(target_roll, rc_channels[RC_CHANNEL_YAW].control_in);
+        target_pitch = opticalFlow.get_of_pitch(target_pitch, rc_channels[RC_CHANNEL_YAW].control_in);
+
+        // call attitude controller
+        attitude.angle_ef_roll_pitch_rate_ef_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
+
+//        // run altitude controller
+//        if (lidar->isHealthy()) {
+//            // if sonar is ok, use surface tracking
+//            target_climb_rate = get_throttle_surface_tracking(target_climb_rate, pos_control.get_alt_target(), G_Dt);
+//        }
+//
+//        // update altitude target and call position controller
+//        pos_control.set_alt_target_from_climb_rate(target_climb_rate, G_Dt);
+//        pos_control.update_z_controller();
+
+        // output pilot's throttle
+        attitude.set_throttle_out(pilot_throttle_scaled, true);
+    }
+}
+#endif
 
 // get_pilot_desired_angle - transform pilot's roll or pitch input into a desired lean angle
 // returns desired angle in centi-degrees

@@ -5,6 +5,8 @@
  *      Author: chris
  */
 
+#if DEBUG == ENABLED
+
 #include <AP_Progmem_AVR.h>
 #include <AP_HAL.h>
 #include <AP_HAL_AVR.h>
@@ -217,69 +219,12 @@ void lidarTest() {
 		return;
 	}
 
-	hal.console->printf("%d\n", lidarDistCm);
-
+	hal.console->printf("Lidar (cm): %d\n", lidarDistCm);
 #endif
 
 
-//	hal.scheduler->m
-//
-//
-//	uint8_t ack = 100;  // Setup variable to hold ACK responses
-//	uint8_t distanceArr[2];
-//	AP_HAL::Semaphore *i2c_sem = hal.i2c->get_semaphore();
-//
-//	// Wait to get the semaphore
-//	int wait_count = 0;
-//	bool has_semaphore = false;
-//	while ((has_semaphore = i2c_sem->take(1)) == false && wait_count < 5) {
-//		wait_count ++;
-//		hal.scheduler->delay(20);
-//	}
-//
-//	if (!has_semaphore) {
-//		hal.console->println("Couldn't get semaphore lock for i2c bus");
-//		i2c_sem->give();
-//		return;
-//	} else {
-//		hal.console->println("Got semaphore...");
-//	}
-//
-//
-//	// Write 0x04 to register 0x00
-//	while (ack != 0) {
-//		ack = hal.i2c->writeRegister((uint8_t)LIDAR_ADDRESS, REGISTER_MEASURE, MEASURE_VALUE);
-//		hal.scheduler->delay(1);
-//
-//		hal.console->printf("ack: %d\n", ack);
-//	}
-//	hal.console->println("Two...");
-//
-//
-//	ack = 100;
-//	// While ACK is received
-//	while (ack != 0) {
-//		ack = hal.i2c->readRegisters(LIDAR_ADDRESS, REGISTER_HIGH_LOW_BYTES, 2, distanceArr);
-//		hal.scheduler->delay(1);  // Prevent over-sampling
-//	}
-//
-//	hal.console->println("Three...");
-//
-//	i2c_sem->give();
-//
-//	// Shift high byte[0] 8 to the left and add low byte[1] to create 16-bit integer
-//	int distance = (distanceArr[0] << 8);
-//	distance |= distanceArr[1];
-//
-//	if (loop_count == 20) {
-//		hal.console->printf("Distance read %d\r\n", distance);
-//		loop_count = 0;
-//	}
-//	loop_count++;
-//
-//	hal.scheduler->delay(50);
-
 }
 
+#endif // DEBUG == ENABLED
 
 

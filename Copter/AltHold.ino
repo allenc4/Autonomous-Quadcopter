@@ -80,7 +80,7 @@ long AltHold::_mapThrottle(long x, long in_min, long in_max, long out_min, long 
 }
 
 void AltHold::holdAltitute(){
-	long currentThrottle = radio.getRCThrottle()->radio_in;
+	long currentThrottle = rc_channels[RC_CHANNEL_THROTTLE].radio_in;
 //	long currentThrottle = this->_hoverPoint;
 
 	//if we have no throttle input do nothing
@@ -162,7 +162,7 @@ void AltHold::holdAltitute(){
 
 
 	_lastState = currentState;
-	_lastThrottle = radio.getRCThrottle()->radio_in;
+	_lastThrottle = rc_channels[RC_CHANNEL_THROTTLE].radio_in;
 
 }
 
@@ -275,7 +275,7 @@ void AltHold::_updateThrottleOutput(float targetAcceleration){
 
 	float throttleOut = (accelPidValue/1000.0f) + this->_hoverPoint;
 
-	radio.getRCThrottle()->radio_in = throttleOut;
+	rc_channels[RC_CHANNEL_THROTTLE].radio_in = throttleOut;
 
 	hal.console->print(" Throttle Output: ");
 	hal.console->print(throttleOut);
@@ -323,7 +323,7 @@ bool AltHold::_caluclateHoverPoint(){
 			return false;
 		}
 
-		radio.getRCThrottle()->radio_in = this->_lastHover;
+		rc_channels[RC_CHANNEL_THROTTLE].radio_in = this->_lastHover;
 
 		hal.console->print(" Old Distance: ");
 		hal.console->print(oldDistance);

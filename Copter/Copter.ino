@@ -53,10 +53,10 @@
 
 // Local includes
 #include "Config.h"
-#include "MotorsClass.h"
+//#include "MotorsClass.h"
 #include "Parameters.h"
-#include "Radio.h"
 #include "OpticalFlow.h"
+//#include "RadioController.h"
 #include "RangeFinder_Lidar.h"
 
 // Function definitions
@@ -104,8 +104,13 @@ uint32_t modeSelectTimer;
 int16_t lastMode;
 
 // RC receiver channel values
-Radio radio(RC_CHANNEL_ROLL, RC_CHANNEL_PITCH, RC_CHANNEL_THROTTLE, RC_CHANNEL_YAW);
-
+//RadioController rc(RC_CHANNEL_ROLL, RC_CHANNEL_PITCH, RC_CHANNEL_THROTTLE, RC_CHANNEL_YAW);
+RC_Channel rc_channels[] {
+		RC_Channel(RC_CHANNEL_ROLL),
+		RC_Channel(RC_CHANNEL_PITCH),
+		RC_Channel(RC_CHANNEL_THROTTLE),
+		RC_Channel(RC_CHANNEL_YAW)
+};
 
 // LIDAR Lite
 #if LIDAR == ENABLED
@@ -118,12 +123,16 @@ OpticalFlow opticalFlow(lidar);
 #endif
 
 // Set up Motors instance to control all motors
-MotorsClass motors(radio);
+//MotorsClass motorsHandler(rc);
+AP_MotorsQuad motors(rc_channels[RC_CHANNEL_ROLL],
+		rc_channels[RC_CHANNEL_PITCH],
+		rc_channels[RC_CHANNEL_THROTTLE],
+		rc_channels[RC_CHANNEL_YAW]);
 
 AP_AHRS_DCM ahrs(ins, barometer, gps);
 AC_AttitudeControl attitude(ahrs,
 		vechicleType,
-		*motors.getMotors(),
+		motors,
 		g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
         g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
@@ -169,10 +178,10 @@ void setup()
 	vechicleType.angle_max = DEFAULT_ANGLE_MAX;
 
 	// If we are calibrating ESCs, do that now
-	if (ESC_CALIBRATE == ENABLED) {
+#if ESC_CALIBRATE == ENABLED
 		hal.console->println("Entering ESC calibration now....");
-//		motors.calibrate_ESCs();
-	}
+		motorsHandler.calibrate_ESCs();
+#endif
 
 	if (!Init_Arducopter()) {
 		// Something went wrong in the initial setup, so we dont want to continue.
@@ -244,10 +253,11 @@ void setup()
 	}
 
 	// Setup RC receiver
-	radio.init();
+	Setup_RC_Channels();
+
 
 	// Setup motors for output
-	motors.init();
+	Setup_Motors();
 
 	// Turn on green/blue light to let user know we are ready to go
 	a_led->write(HAL_GPIO_LED_OFF);
@@ -294,10 +304,10 @@ void fast_loop() {
     ahrs.update();
 
     // Read in RC inputs
-    radio.read();
+    rc_read();
 
-	if(radio.getRCThrottle()->radio_in <= radio.getRCThrottle()->radio_min  + 75) {
-		if (radio.getRCYaw()->radio_in > (radio.getRCYaw()->radio_max - 25)) {
+	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in <= rc_channels[RC_CHANNEL_THROTTLE].radio_min  + 75) {
+		if (rc_channels[RC_CHANNEL_YAW].radio_in > (rc_channels[RC_CHANNEL_YAW].radio_max - 25)) {
 			if(lastMode != MOTORS_ARMED)
 			{
 				lastModeSelectTime = hal.scheduler->millis();
@@ -309,7 +319,7 @@ void fast_loop() {
 			modeSelectTimer += currentTime - lastModeSelectTime;
 			lastModeSelectTime = currentTime;
 
-		} else if (radio.getRCYaw()->radio_in < (radio.getRCYaw()->radio_min  + 25)) {
+		} else if (rc_channels[RC_CHANNEL_YAW].radio_in < (rc_channels[RC_CHANNEL_YAW].radio_min  + 25)) {
 
 			if(lastMode != MOTORS_DISARMED)
 			{
@@ -329,11 +339,11 @@ void fast_loop() {
 		switch (lastMode) {
 		case MOTORS_ARMED:
 			hal.console->print("motors armed\n");
-			motors.getMotors()->armed(true);
+			motors.armed(true);
 			break;
 		case MOTORS_DISARMED:
 			hal.console->print("motors disarmed\n");
-			motors.getMotors()->armed(false);
+			motors.armed(false);
 			break;
 		}
 		modeSelectTimer = 0;
@@ -346,20 +356,24 @@ void fast_loop() {
 
 	// Send radio output (modified with stabilize control) to motors.
 	// This function only outputs a signal to the ESCs if the motors are armed AND enabled.
-	motors.getMotors()->output();
+	motors.output();
 
 #if DEBUG == ENABLED
 	if (loop_count % 20 == 0) {
 		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\n",
-				motors.getMotors()->motor_out[2],
-				motors.getMotors()->motor_out[0],
-				motors.getMotors()->motor_out[1],
-				motors.getMotors()->motor_out[3]);
+				motors.motor_out[2],
+				motors.motor_out[0],
+				motors.motor_out[1],
+				motors.motor_out[3]);
 	}
 #endif
 
 	// run the attitude controllers
+#if OPTFLOW == ENABLED
+	ofLoiter_run();
+#else
 	stabilize_run();
+#endif
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED
@@ -385,6 +399,14 @@ void medium_loop() {
 void slow_loop() {
 
 	// TODO - Check failsafes
+}
+
+void rc_read() {
+	// Read RC values
+	rc_channels[RC_CHANNEL_ROLL].set_pwm(hal.rcin->read(RC_CHANNEL_ROLL));
+	rc_channels[RC_CHANNEL_PITCH].set_pwm(hal.rcin->read(RC_CHANNEL_PITCH));
+	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(hal.rcin->read(RC_CHANNEL_THROTTLE));
+	rc_channels[RC_CHANNEL_YAW].set_pwm(hal.rcin->read(RC_CHANNEL_YAW));
 }
 
 /**

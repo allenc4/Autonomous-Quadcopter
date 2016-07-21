@@ -11,29 +11,16 @@ bool RangeFinder_Lidar::init() {
 	// FOR TESTING OF OPTICAL FLOW SENSOR ONLY
 	///////////////////////////////////////////////////////////////////
 //	return true;
-
+	_starting_distance_offset = 0;
 	hal.i2c->setTimeout(50);
 
-	// Get pointer to i2c bus semaphore
-	AP_HAL::Semaphore *i2c_sem = hal.i2c->get_semaphore();
-
-	// If we can't get the semaphore, exit immediately
-	if (!i2c_sem->take(1)) {
-		return false;
-	}
-
 	// Send command to lidar to take reading
-	if (hal.i2c->writeRegister(LIDAR_ADDRESS, REGISTER_MEASURE, MEASURE_VALUE) != 0) {
-		i2c_sem->give();
+	if (!update(_starting_distance_offset)) {
 		return false;
+	} else {
+		return true;
 	}
-
-	// If we made it here, write was successful
-	i2c_sem->give();
-	timeLastUpdate = hal.scheduler->millis();
-	return true;
 }
-
 
 
 /**
@@ -44,8 +31,8 @@ bool RangeFinder_Lidar::update() {
 	///////////////////////////////////////////////////////////////////
 	// FOR TESTING OF OPTICAL FLOW SENSOR ONLY
 	///////////////////////////////////////////////////////////////////
-//	distCM = 49;
-//	return true;
+	distCM = 49;
+	return true;
 
 	timeLastUpdate = hal.scheduler->millis();
 
@@ -81,8 +68,8 @@ bool RangeFinder_Lidar::update() {
 		return false;
 	}
 
-	// Combine results into a cm distance
-	distCM = ((uint16_t)buf[0] << 8 | buf[1]);
+	// Combine results into a cm distance (taking into account the offset that the lidar is from the ground)
+	distCM = ((uint16_t)buf[0] << 8 | buf[1]) - _starting_distance_offset;
 
 	i2c_sem->give();
 	numReadFails = 0;  // Reset numReadFails since we only count consecutive failures
@@ -104,4 +91,12 @@ bool RangeFinder_Lidar::update(uint16_t &distance) {
 		distance = distCM;
 	}
 	return stat;
+}
+
+/**
+ * Get the distance offset of the lidar. That is, get the distance the lidar is
+ * from the ground when landed.
+ */
+uint16_t RangeFinder_Lidar::getStartingDistanceOffset() {
+	return _starting_distance_offset;
 }

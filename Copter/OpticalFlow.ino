@@ -16,6 +16,8 @@ OpticalFlow::OpticalFlow(RangeFinder *rf) {
 	pids_optflow[PID_OPTFLOW_ROLL].kI(OPTFLOW_ROLL_I);
 	pids_optflow[PID_OPTFLOW_ROLL].kD(OPTFLOW_ROLL_D);
 	pids_optflow[PID_OPTFLOW_ROLL].imax(OPTFLOW_IMAX);
+
+	reset_I();
 }
 
 bool OpticalFlow::init() {
@@ -61,9 +63,22 @@ void OpticalFlow::update() {
 	}
 }
 
+void OpticalFlow::reset_I() {
+	pids_optflow[PID_OPTFLOW_ROLL].reset_I();
+	pids_optflow[PID_OPTFLOW_PITCH].reset_I();
+
+	_of_roll  = 0;
+	_of_pitch = 0;
+}
+
 // Below two methods (get_of_roll() and get_of_pitch())taken from Attitude.pde from ArduCopter firmware
 
-// calculate modified roll/pitch depending upon optical flow calculated position
+/**
+ * Calculate modified roll/pitch depending upon optical flow calculated position
+ * input_roll: roll input of RC stick (in centi-degrees (RC_Channel.control_in))
+ * input_yaw:  yaw input of RC stick (in centi-degrees (RC_Channel.control_in))
+ *
+ */
 int32_t OpticalFlow::get_of_roll(int32_t input_roll, int32_t input_yaw)
 {
     float tot_x_cm = 0;      // total distance from target
@@ -78,7 +93,7 @@ int32_t OpticalFlow::get_of_roll(int32_t input_roll, int32_t input_yaw)
         tot_x_cm += _optflow.x_cm;
 
         // only stop roll if caller isn't modifying roll AND yaw (accounting for RC jitter)
-        if (abs(input_roll) <= 3 && abs(input_yaw) <= 3) {
+        if (abs(input_roll) <= 200 && abs(input_yaw) <= 200) {
         	p = pids_optflow[PID_OPTFLOW_ROLL].get_p(-tot_x_cm);
         	i = pids_optflow[PID_OPTFLOW_ROLL].get_i(-tot_x_cm, 1.0f);
         	d = pids_optflow[PID_OPTFLOW_ROLL].get_d(-tot_x_cm, 1.0f);
@@ -103,16 +118,16 @@ int32_t OpticalFlow::get_of_roll(int32_t input_roll, int32_t input_yaw)
 //            pid_log_counter++;              // Note: get_of_pitch pid logging relies on this function updating pid_log_counter so if you change the line above you must change the equivalent line in get_of_pitch
 //            if( pid_log_counter >= 5 ) {    // (update rate / desired output rate) = (100hz / 10hz) = 10
 //                pid_log_counter = 0;
-//                Log_Write_PID(CH6_OPTFLOW_KP, tot_x_cm, p, i, d, of_roll, tuning_value);
+//                Log_Write_PID(CH6_OPTFLOW_KP, tot_x_cm, p, i, d, _of_roll, tuning_value);
 //            }
 //        }
 
     }
 
     // limit max angle
-    of_roll = constrain_int32(of_roll, RC_ROLL_MIN_SCALED, RC_ROLL_MAX_SCALED);
+    _of_roll = constrain_int32(_of_roll, RC_ROLL_MIN_SCALED, RC_ROLL_MAX_SCALED);
 
-    return of_roll;
+    return _of_roll;
 }
 
 int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
@@ -129,7 +144,7 @@ int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
         tot_y_cm += _optflow.y_cm;
 
         // only stop roll if caller isn't modifying pitch AND yaw (accounting for RC jitter)
-        if (abs(input_pitch) <= 3 && abs(input_yaw) <= 3) {
+        if (abs(input_pitch) <= 200 && abs(input_yaw) <= 200) {
         	p = pids_optflow[PID_OPTFLOW_PITCH].get_p(tot_y_cm);
         	i = pids_optflow[PID_OPTFLOW_PITCH].get_i(tot_y_cm, 1.0f);
         	d = pids_optflow[PID_OPTFLOW_PITCH].get_d(tot_y_cm, 1.0f);
