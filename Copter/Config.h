@@ -13,8 +13,6 @@
  #include "APM_Config.h" // <== THIS INCLUDE, DO NOT EDIT IT. EVER.
 #endif
 
-
-#define HAL_STORAGE_SIZE            16384
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
 #define DEBUG			DISABLED
@@ -25,14 +23,22 @@
 #define LIDAR			DISABLED
 
 // Optical Flow sensor
-#define OPTFLOW					DISABLED
+#define OPTFLOW			DISABLED
+
+// Compass
+#define COMPASS			DISABLED
+
+// Barometer
+#define CONFIG_BARO     HAL_BARO_DEFAULT
 
 //modes
 //the time needed to hold controller in certain position to
 //change the mode
-#define MODE_SELECT_TIME		5000
+#define MODE_SELECT_TIME		1500
 #define NO_MODE					0
 #define ACCEL_CALIBRATE_MODE 	1
+#define MOTORS_ARMED			2
+#define MOTORS_DISARMED			3
 
 //////////////////////////////////////////////////////////////////////////////
 // HARDWARE CONFIGURATION AND CONNECTIONS
@@ -53,6 +59,8 @@
 #define RC_CHANNEL_THROTTLE	2
 #define RC_CHANNEL_YAW		3
 #define RC_CHANNEL_AUX_1	4
+#define RC_CHANNEL_MIN		0
+#define RC_CHANNEL_MAX		4
 
 // RC MIN and MAX values
 #define RC_YAW_MIN       966
@@ -64,6 +72,10 @@
 #define RC_THROTTLE_MIN  970
 #define RC_THROTTLE_MAX  1993
 
+#define THROTTLE_MID_DEFAULT	500 // middle throttle value (S.B. close to hover point)
+#define THROTTLE_MIN_DEFAULT	130 // minimum throttle sent to the motors when armed and pilot throttle above zero
+
+
 // RC scaled values
 #define RC_YAW_MIN_SCALED 	-150
 #define RC_YAW_MAX_SCALED	 150
@@ -72,32 +84,17 @@
 #define RC_PITCH_MIN_SCALED	-45
 #define RC_PITCH_MAX_SCALED	 45
 
+// RC Feel roll/pitch definitions
+#define RC_FEEL_RP_VERY_SOFT        0
+#define RC_FEEL_RP_SOFT             25
+#define RC_FEEL_RP_MEDIUM           50
+#define RC_FEEL_RP_CRISP            75
+#define RC_FEEL_RP_VERY_CRISP       100
+
 // Inertial sensor values for pitch, roll, and yaw need to be stable before flight.
 // If the difference between the last read sensor value and current value is less than
 // or equal to the min_update (in radians), the sensor is ready
 #define INS_SENSOR_MIN_UPDATE_RAD    0.0001
-
-/////////////////////////////////////////////////////////////////////
-// Offsets for gyroscope and accelerometer
-// INS Gyroscope
-#define INS_ROLL_OFFSET 	0 //-1.71 // -1.05  //0.00579265487498855
-#define INS_PITCH_OFFSET	0 //1.65// 1.082921172521
-//#define INS_YAW_OFFSET		-0.9585314622399
-
-// Accelerometer offset in degrees
-#define ACCEL_X_OFFSET		0 //-7.75 //-4.4// -0.9  // Roll
-#define ACCEL_Y_OFFSET		0 //10.03 //7.3// 2.645 // Pitch
-#define ACCEL_Z_OFFSET		0 	  // Yaw
-//#define ACCEL_X_SCALE		1
-//#define ACCEL_Y_SCALE		1 //0.99
-//#define ACCEL_Z_SCALE		1
-
-#define TRIM_PITCH				-0.02
-#define TRIM_ROLL				-0.02
-
-#define THRESHOLD_PITCH_OUTPUT		0
-#define THRESHOLD_ROLL_OUTPUT		0
-#define THRESHOLD_YAW_OUTPUT		0
 
 //////////////////////////////////////////////////////////////////////////////
 // Serial port speeds.
@@ -109,10 +106,10 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Motor mapping
 //
-#define MOTOR_FL    2  // Front left
-#define MOTOR_FR    0  // Front Right
-#define MOTOR_BL    1  // Back Left
-#define MOTOR_BR    3  // Back Right
+//#define MOTOR_FL    2  // Front left
+//#define MOTOR_FR    0  // Front Right
+//#define MOTOR_BL    1  // Back Left
+//#define MOTOR_BR    3  // Back Right
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -190,7 +187,7 @@
 #define		OPTFLOW_ROLL_P		2.5f
 #define		OPTFLOW_ROLL_I		0.5f
 #define		OPTFLOW_ROLL_D		0.12f
-#define OPTFLOW_I_MAX			1
+#define OPTFLOW_IMAX			1
 
 // GPIO LED pins
 #ifndef HAL_GPIO_A_LED_PIN
@@ -210,6 +207,26 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Attitude Control
+
+// Stabilize Rate Control
+//
+#ifndef ROLL_PITCH_INPUT_MAX
+ # define ROLL_PITCH_INPUT_MAX      4500            // roll, pitch input range
+#endif
+#ifndef DEFAULT_ANGLE_MAX
+ # define DEFAULT_ANGLE_MAX         4500            // ANGLE_MAX parameters default value
+#endif
+#ifndef ANGLE_RATE_MAX
+ # define ANGLE_RATE_MAX            18000           // default maximum rotation rate in roll/pitch axis requested by angle controller used in stabilize, loiter, rtl, auto flight modes
+#endif
+
+// definitions for earth frame and body frame
+// used to specify frame to rate controllers
+#define EARTH_FRAME     0
+#define BODY_FRAME      1
+
+//////////////////////////////////////////////////////////////////////////////
 // I2C / Lidar
 #define LIDAR_ADDRESS				0x62	// I2C address of the LIDAR
 #define REGISTER_MEASURE 			0x00 	// Register to write to initiate ranging
@@ -218,6 +235,247 @@
 #define RANGEFINDER_READ_TIMEOUT_MS		1000	// Time (in milliseconds) to wait for new LIDAR data before
 											// triggering a watchdog timeout
 #define RANGEFINDER_READ_TIMOUT_ATTEMPTS	10		// Only allow 10 attempts of consecutive read fails before throwing error
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Attitude Control
+//
+
+// Acro mode gains
+// Acro Mode
+#define ACRO_RP_P                 4.5f
+#define ACRO_YAW_P                4.5f
+#define ACRO_LEVEL_MAX_ANGLE      3000
+#define ACRO_BALANCE_ROLL          1.0f
+#define ACRO_BALANCE_PITCH         1.0f
+#define ACRO_EXPO_DEFAULT          0.3f
+# define AXIS_LOCK_ENABLED      ENABLED
+
+// Stabilize (angle controller) gains
+#define STABILIZE_ROLL_P          4.5f
+#define STABILIZE_ROLL_I          0.0f
+#define STABILIZE_ROLL_IMAX    	8.0f            // degrees
+
+#define STABILIZE_PITCH_P         4.5f
+#define STABILIZE_PITCH_I         0.0f
+#define STABILIZE_PITCH_IMAX   	8.0f            // degrees
+
+#define STABILIZE_YAW_P           4.5f            // increase for more aggressive Yaw Hold, decrease if it's bouncy
+#define STABILIZE_YAW_I           0.0f
+#define STABILIZE_YAW_IMAX        8.0f            // degrees * 100
+
+#ifndef YAW_LOOK_AHEAD_MIN_SPEED
+ # define YAW_LOOK_AHEAD_MIN_SPEED  1000             // minimum ground speed in cm/s required before copter is aimed at ground course
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// Stabilize Rate Control
+//
+
+#ifndef MAX_INPUT_ROLL_ANGLE
+ # define MAX_INPUT_ROLL_ANGLE      4500
+#endif
+#ifndef MAX_INPUT_PITCH_ANGLE
+ # define MAX_INPUT_PITCH_ANGLE     4500
+#endif
+#ifndef RATE_ROLL_P
+ # define RATE_ROLL_P        		0.150f
+#endif
+#ifndef RATE_ROLL_I
+ # define RATE_ROLL_I        		0.100f
+#endif
+#ifndef RATE_ROLL_D
+ # define RATE_ROLL_D        		0.004f
+#endif
+#ifndef RATE_ROLL_IMAX
+ # define RATE_ROLL_IMAX         	5.0f                    // degrees
+#endif
+
+#ifndef RATE_PITCH_P
+ # define RATE_PITCH_P       		0.150f
+#endif
+#ifndef RATE_PITCH_I
+ # define RATE_PITCH_I       		0.100f
+#endif
+#ifndef RATE_PITCH_D
+ # define RATE_PITCH_D       		0.004f
+#endif
+#ifndef RATE_PITCH_IMAX
+ # define RATE_PITCH_IMAX        	5.0f                    // degrees
+#endif
+
+#ifndef RATE_YAW_P
+ # define RATE_YAW_P              	0.200f
+#endif
+#ifndef RATE_YAW_I
+ # define RATE_YAW_I              	0.015f
+#endif
+#ifndef RATE_YAW_D
+ # define RATE_YAW_D              	0.000f
+#endif
+#ifndef RATE_YAW_IMAX
+ # define RATE_YAW_IMAX            	8.0f          // degrees
+#endif
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Rate controlled stabilized variables
+//
+
+#ifndef MAX_ROLL_OVERSHOOT
+ #define MAX_ROLL_OVERSHOOT			3000
+#endif
+
+#ifndef MAX_PITCH_OVERSHOOT
+ #define MAX_PITCH_OVERSHOOT		3000
+#endif
+
+#ifndef MAX_YAW_OVERSHOOT
+ #define MAX_YAW_OVERSHOOT			1000
+#endif
+
+#ifndef ACRO_BALANCE_ROLL
+ #define ACRO_BALANCE_ROLL			200
+#endif
+
+#ifndef ACRO_BALANCE_PITCH
+ #define ACRO_BALANCE_PITCH			200
+#endif
+
+#ifndef ACRO_TRAINER_ENABLED
+ #define ACRO_TRAINER_ENABLED       ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// Loiter position control gains
+//
+#ifndef LOITER_P
+ # define LOITER_P             		0.8f
+#endif
+#ifndef LOITER_I
+ # define LOITER_I             		0.0f
+#endif
+#ifndef LOITER_IMAX
+ # define LOITER_IMAX          		30             // degrees
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// Loiter rate control gains
+//
+#ifndef LOITER_RATE_P
+ # define LOITER_RATE_P          	1.0f
+#endif
+#ifndef LOITER_RATE_I
+ # define LOITER_RATE_I          	0.5f
+#endif
+#ifndef LOITER_RATE_D
+ # define LOITER_RATE_D          	0.0f
+#endif
+#ifndef LOITER_RATE_IMAX
+ # define LOITER_RATE_IMAX       	4               // maximum acceleration from I term build-up in m/s/s
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// Autopilot rotate rate limits
+//
+#ifndef AUTO_YAW_SLEW_RATE
+ # define AUTO_YAW_SLEW_RATE        60                     // degrees/sec
+#endif
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Throttle control gains
+//
+#ifndef THROTTLE_CRUISE
+ # define THROTTLE_CRUISE       450            //
+#endif
+
+#ifndef THR_MID
+ # define THR_MID        500                            // Throttle output (0 ~ 1000) when throttle stick is in mid position
+#endif
+
+#ifndef ALT_HOLD_P
+ # define ALT_HOLD_P            1.0f
+#endif
+#ifndef ALT_HOLD_I
+ # define ALT_HOLD_I            0.0f
+#endif
+#ifndef ALT_HOLD_IMAX
+ # define ALT_HOLD_IMAX         300
+#endif
+
+// RATE control
+#ifndef THROTTLE_P
+ # define THROTTLE_P            6.0f
+#endif
+#ifndef THROTTLE_I
+ # define THROTTLE_I            0.0f
+#endif
+#ifndef THROTTLE_D
+ # define THROTTLE_D            0.0f
+#endif
+
+#ifndef THROTTLE_IMAX
+ # define THROTTLE_IMAX         300
+#endif
+
+// default maximum vertical velocity the pilot may request
+#ifndef PILOT_VELZ_MAX
+ # define PILOT_VELZ_MAX    250     // maximum vertical velocity in cm/s
+#endif
+#define ACCELERATION_MAX_Z  750     // maximum veritcal acceleration in cm/s/s
+
+// max distance in cm above or below current location that will be used for the alt target when transitioning to alt-hold mode
+#ifndef ALT_HOLD_INIT_MAX_OVERSHOOT
+ # define ALT_HOLD_INIT_MAX_OVERSHOOT 200
+#endif
+// the acceleration used to define the distance-velocity curve
+#ifndef ALT_HOLD_ACCEL_MAX
+ # define ALT_HOLD_ACCEL_MAX 250    // if you change this you must also update the duplicate declaration in AC_WPNav.h
+#endif
+
+// Throttle Accel control
+#ifndef THROTTLE_ACCEL_P
+ # define THROTTLE_ACCEL_P  0.75f
+#endif
+#ifndef THROTTLE_ACCEL_I
+ # define THROTTLE_ACCEL_I  1.50f
+#endif
+#ifndef THROTTLE_ACCEL_D
+ # define THROTTLE_ACCEL_D 0.0f
+#endif
+#ifndef THROTTLE_ACCEL_IMAX
+ # define THROTTLE_ACCEL_IMAX 500
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //#define ROLL_PITCH_INPUT_MAX      4500            // roll, pitch input range (45 degrees)
 //#define DEFAULT_ANGLE_MAX         4500            // Maximum lean angle (45 degrees)

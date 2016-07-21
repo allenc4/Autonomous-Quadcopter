@@ -51,7 +51,7 @@ void Serial::write(const char *str, int16_t len) {
 }
 
 bool checksum(const char *str, int16_t chksum) {
-
+	return false;
 }
 
 /**

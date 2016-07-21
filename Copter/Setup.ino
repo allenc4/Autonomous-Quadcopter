@@ -1,6 +1,9 @@
 #include <AP_HAL.h>
 #include <AP_HAL_AVR.h>
 
+#include <RC_Channel.h>
+#include <AP_Motors.h>
+
 #include "Config.h"
 #include "INS_UserInteract.h"
 
@@ -46,13 +49,17 @@ bool Init_Arducopter() {
 	hal.gpio->pinMode(40, HAL_GPIO_OUTPUT);
 	hal.gpio->write(40, 1);
 
+	ahrs.init();  // Internally calls MPU6050's internal sensor fusion (DigitalMotionProcessing)
+	ahrs.set_vehicle_class(AHRS_VEHICLE_COPTER);
+
 	// Initialize MPU6050 sensor
 	ins.init(AP_InertialSensor::COLD_START,
-			 AP_InertialSensor::RATE_100HZ,
-			 flashLeds);
+			 AP_InertialSensor::RATE_100HZ);
 
+	// Reset gyro
+	ahrs.reset_gyro_drift();
 
-	if(!ins.calibrated()){
+	if(!ins.calibrated() || ACCEL_CALIBRATE == ENABLED){
 		//flash the leds 3 times so we know it needs to be calibrated
 		for(int i = 0; i < 4; i++)
 		{
@@ -68,14 +75,11 @@ bool Init_Arducopter() {
 		// Initialize MPU6050 sensor
 		float roll_trim, pitch_trim;
 		AP_InertialSensor_UserInteractStream interact(hal.console);
-		if(!ins.calibrate_accel(NULL, &interact, roll_trim, pitch_trim)){
+		if(!ins.calibrate_accel(&interact, roll_trim, pitch_trim)){
 			hal.scheduler->delay(500);
 			return false;
 		}
 	}
-
-	ins.push_accel_offsets_to_dmp();
-	ins.push_gyro_offsets_to_dmp();
 
 	//check if the accelerometer has been calibrated
 	//this will load the accel offsets from EEPORM
@@ -87,24 +91,10 @@ bool Init_Arducopter() {
 		return false;
 	}
 
-	ahrs.init();  // Internally calls MPU6050's internal sensor fusion (DigitalMotionProcessing)
-
-
-	// Initialize MPU6050's internal sensor fusion (aka DigitalMotionProcessing)
-//	hal.scheduler->suspend_timer_procs();  // stop bus collisions
-//	ins.dmp_init();
+	// Push accelerometer and gyro offsets to DMP
 
 	// setup fast AHRS gains to get right attitude
 	ahrs.set_fast_gains(true);
-
-	// Set accelerometer offsets and scale
-//	Vector3<float> accel_offsets(ACCEL_X_OFFSET, ACCEL_Y_OFFSET, ACCEL_Z_OFFSET);
-//	Vector3<float> accel_scaling(ACCEL_X_SCALE, ACCEL_Y_SCALE, ACCEL_Z_SCALE);
-//	ins.set_accel_offsets(accel_offsets);
-//	ins.set_accel_scale(accel_scaling);
-
-//	ins.push_gyro_offsets_to_dmp();
-//	ins.push_accel_offsets_to_dmp();
 
 	// Initialize LIDAR and ensure it is connected at startup
 #if LIDAR == ENABLED
@@ -131,6 +121,7 @@ bool Init_Arducopter() {
 #endif // LIDAR == ENABLED
 
 	// Initialize compass
+#if COMPASS == ENABLED
 	if (!compass.init()) {
 		hal.console->println("compass initialisation failed!");
 		return false;
@@ -138,7 +129,7 @@ bool Init_Arducopter() {
 //		compass.set_offsets(0,0,0); // set offsets to account for surrounding interference
 //		compass.set_declination(ToRad(0.0)); // set local difference between magnetic north and true north
 	}
-
+#endif
 
 
 //	hal.scheduler->delay(50);
@@ -172,62 +163,6 @@ void flashLeds(bool flash){
 		a_led->mode(HAL_GPIO_LED_OFF);
 		b_led->mode(HAL_GPIO_LED_ON);
 		c_led->mode(HAL_GPIO_LED_OFF);
-	}
-}
-
-/**
- * Enables output to the motors and sends a 490Hz pulse to negate ESC averaging filter effect
- */
-void Setup_Motors() {
-
-	if (DEBUG) {
-		hal.console->println("Setting up motors.");
-	}
-
-	// Enable output to the motors
-	hal.rcout->set_freq(0xF, RC_FAST_SPEED);  // Send 490Hz pulse to negate ESC averaging filter effect
-	hal.rcout->enable_mask(0xFF);
-}
-
-/**
- * Calibrate the accelerometer. This MUST be done on the ground with USB serial connected.
- */
-void accel_calibration() {
-
-	bool calibrate = false;
-
-	if (ins.calibrated()) {
-		hal.console->printf("Accelerometer has been calibrated already. Calibrate again (Y/N)?\n");
-
-		while (hal.console->available() <= 0) {
-			hal.scheduler->delay(20);
-		}
-
-		if (hal.console->read() == 'Y') {
-			calibrate = true;
-		}
-	} else {
-		calibrate = true;
-	}
-
-	if (calibrate) {
-		hal.console->printf("Ensure the quadcopter is on a level surface and not moving. Press any key to continue\n");
-
-		// Wait until the user is ready to calibrate
-		while (hal.console->available() <= 0) {
-			hal.scheduler->delay(20);
-		}
-
-		// Call the Ardupilot library function to calibrate the accelerometer, get offsets and scaling,
-		// and pitch/roll trim values
-		AP_InertialSensor_UserInteract *console = new INS_UserInteract;
-		ins.calibrate_accel(NULL, console, trim_pitch, trim_roll);
-
-		hal.console->printf("Pitch trim: %4.2f\t Roll trim: %4.2f",
-				trim_pitch, trim_roll);
-		while (hal.console->available() <= 0) {
-			hal.scheduler->delay(20);
-		}
 	}
 
 }

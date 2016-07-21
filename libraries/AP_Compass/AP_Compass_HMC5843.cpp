@@ -184,8 +184,7 @@ AP_Compass_HMC5843::init()
 
     _i2c_sem = hal.i2c->get_semaphore();
     if (!_i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
-        hal.console->println("Failed to get HMC5843 semaphore");
-        return false;
+        hal.scheduler->panic(PSTR("Failed to get HMC5843 semaphore"));
     }
 
     // determine if we are using 5843 or 5883L

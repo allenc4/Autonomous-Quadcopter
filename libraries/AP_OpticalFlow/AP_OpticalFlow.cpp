@@ -23,8 +23,6 @@
 
 #define FORTYFIVE_DEGREES 0.78539816f
 
-extern const AP_HAL::HAL& hal;
-
 // set_orientation - Rotation vector to transform sensor readings to the body
 // frame.
 void AP_OpticalFlow::set_orientation(enum Rotation rotation)
@@ -36,9 +34,9 @@ void AP_OpticalFlow::update()
 {
 }
 
-//void AP_OpticalFlow::init()
-//{
-//}
+void AP_OpticalFlow::init()
+{
+}
 
 // updates internal lon and lat with estimation based on optical flow
 void AP_OpticalFlow::update_position(float roll, float pitch, float sin_yaw, float cos_yaw, float altitude)
@@ -54,10 +52,8 @@ void AP_OpticalFlow::update_position(float roll, float pitch, float sin_yaw, flo
 	    altitude = max(altitude, 0);
 
         // change in position is actual change measured by sensor (i.e. dx, dy) minus expected change due to change in roll, pitch
-        change_x = x - (diff_roll * radians_to_pixels);
-        change_y = y - (-diff_pitch * radians_to_pixels);
-
-//        hal.console->printf("Change x: %4.2f\t Y: %4.2f\t", change_x, change_y);
+        change_x = dx - (diff_roll * radians_to_pixels);
+        change_y = dy - (-diff_pitch * radians_to_pixels);
 
         float avg_altitude = (altitude + _last_altitude)*0.5f;
 
@@ -68,9 +64,6 @@ void AP_OpticalFlow::update_position(float roll, float pitch, float sin_yaw, flo
         // for example if you are leaned over at 45 deg the ground will
         // appear farther away and motion from opt flow sensor will be less
         y_cm = -change_y * avg_altitude * conv_factor;
-
-        vlon = x_cm * sin_yaw + y_cm * cos_yaw;
-        vlat = y_cm * sin_yaw + x_cm * cos_yaw;
     }
 
     _last_altitude = altitude;

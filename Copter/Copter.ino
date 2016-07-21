@@ -12,11 +12,20 @@
 #include <AP_Param.h>
 #include <AP_Progmem.h>
 #include <AP_ADC.h>
+#include <AP_Vehicle.h>
+#include <AP_Notify.h>
+#include <DataFlash.h>
+#include <StorageManager.h>
 
 // Below libraries needed for Inertial Sensor
 #include <GCS_MAVLink.h>
 #include <Filter.h>
 #include <AP_InertialSensor.h>
+#include <AP_Mission.h>
+#include <AP_Terrain.h>
+#include <AP_Buffer.h>
+#include <AP_ADC_AnalogSource.h>
+#include <AP_InertialNav.h>
 #include <AP_AHRS.h>
 
 #include <AP_Baro.h>
@@ -30,65 +39,73 @@
 #include <AP_HAL_AVR.h>
 #include <GPIO.h>
 
+#include <AP_Curve.h>
+#include <AC_AttitudeControl.h>
+#include <APM_PI.h>
 #include <AC_PID.h>
 #include <PID.h>
+#include <RC_Channel.h>         // RC Channel Library
+
+#include <AP_Motors.h>
 
 #include <memcheck.h>           // memory limit checker
 #include <AP_Scheduler.h>       // main loop scheduler
 
-
-
 // Local includes
 #include "Config.h"
+#include "MotorsClass.h"
 #include "Parameters.h"
-#include "Motors.h"
+#include "Radio.h"
 #include "OpticalFlow.h"
 #include "RangeFinder_Lidar.h"
 
 // Function definitions
-static void fast_loop();
-static void medium_loop();
-static void slow_loop();
-static void update_trig();
+void fast_loop();
+void medium_loop();
+void slow_loop();
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
+AP_Vehicle::MultiCopter vechicleType;
 
 extern const AP_Param::Info var_info[];
-AP_Param param_loader(var_info, HAL_STORAGE_SIZE);
+AP_Param param_loader(var_info);
 
-static Parameters g;
+Parameters g;
 
 // MPU6050 accel/gyro chip
-AP_InertialSensor_MPU6000 ins;
-GPS *gps;  // Not formally used in this code. Only declared to create AHRS object
-AP_AHRS_MPU6000 ahrs(&ins, gps);
+AP_InertialSensor ins;
+// GPS and Barometer not formally used in this code.
+// Only declared to create AHRS and AttitudeControl objects
+AP_GPS gps;
+#if CONFIG_BARO == HAL_BARO_BMP085
+static AP_Baro_BMP085 barometer;
+#elif CONFIG_BARO == HAL_BARO_PX4
+static AP_Baro_PX4 barometer;
+#elif CONFIG_BARO == HAL_BARO_VRBRAIN
+static AP_Baro_VRBRAIN barometer;
+#elif CONFIG_BARO == HAL_BARO_HIL
+static AP_Baro_HIL barometer;
+#elif CONFIG_BARO == HAL_BARO_MS5611
+static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::i2c);
+#elif CONFIG_BARO == HAL_BARO_MS5611_SPI
+static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::spi);
+#else
+ #error Unrecognized CONFIG_BARO setting
+#endif
 
-// Orientation
+// Compass used for orientation
 AP_Compass_HMC5843 compass;
-////////////////////////////////////////////////////////////////////////////////
-// Convenience accessors for commonly used trig functions. These values are generated
-// by the DCM through a few simple equations.
-// The cos values are defaulted to 1 to get a decent initial value for a level state
-float cos_roll_x         = 1.0;
-float cos_pitch_x        = 1.0;
-float cos_yaw            = 1.0;
-float sin_yaw;
-float sin_roll;
-float sin_pitch;
 
+// Variables to hold arm/disarm state
 uint32_t lastModeSelectTime;
 uint32_t modeSelectTimer;
-int lastMode;
-
-// Roll and pitch trim values
-float trim_roll, trim_pitch;
+int16_t lastMode;
 
 // RC receiver channel values
-long rc_channels[8];
+Radio radio(RC_CHANNEL_ROLL, RC_CHANNEL_PITCH, RC_CHANNEL_THROTTLE, RC_CHANNEL_YAW);
 
-PID pids[6];
 
 // LIDAR Lite
 #if LIDAR == ENABLED
@@ -101,7 +118,14 @@ OpticalFlow opticalFlow(lidar);
 #endif
 
 // Set up Motors instance to control all motors
-Motors motors;
+MotorsClass motors(radio);
+
+AP_AHRS_DCM ahrs(ins, barometer, gps);
+AC_AttitudeControl attitude(ahrs,
+		vechicleType,
+		*motors.getMotors(),
+		g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
+        g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
 // The Commanded ROll based on optical flow sensor.
 int32_t of_roll;
@@ -117,6 +141,8 @@ AP_HAL::DigitalSource *c_led;
 uint32_t loop_count;
 
 // System Timers
+uint32_t G_Dt;
+uint32_t fastLoopTimer = 0;
 //timer for how often medium loop should be executed
 uint32_t mediumLoopExecute = 500;		
 //last time we executed the medium loop
@@ -126,15 +152,11 @@ uint32_t slowLoopExecute = 1000;
 //last time we executed the slow loop
 uint32_t slowLoopLastExecute = 0;		
 
-uint32_t fastLoopTimer = 0;
-
 //Integration time for pids
 float Gd_t = 0.02;
 
 void setup()
 {
-
-
 	// this needs to be the first call, as it fills memory with sentinel values
 	memcheck_init();
 	//load parameters from eeprom
@@ -143,31 +165,13 @@ void setup()
 
 	loop_count = 0;
 
-	// Initialize PID array
-	pids[PID_PITCH_RATE].kP(PITCH_RATE_P);
-//	pids[PID_PITCH_RATE].kI(PITCH_RATE_I);
-//	pids[PID_PITCH_RATE].kD(PITCH_RATE_D);
-	pids[PID_PITCH_RATE].imax(PITCH_RATE_I_MAX);
-
-	pids[PID_ROLL_RATE].kP(ROLL_RATE_P);
-//	pids[PID_ROLL_RATE].kI(ROLL_RATE_I);
-//	pids[PID_ROLL_RATE].kD(ROLL_RATE_D);
-	pids[PID_ROLL_RATE].imax(ROLL_RATE_I_MAX);
-
-	pids[PID_YAW_RATE].kP(YAW_RATE_P);
-//	pids[PID_YAW_RATE].kI(YAW_RATE_I);
-//	pids[PID_YAW_RATE].kD(YAW_RATE_D);
-	pids[PID_YAW_RATE].imax(YAW_RATE_I_MAX);
-
-	pids[PID_PITCH_STAB].kP(PITCH_STAB_P);
-	pids[PID_ROLL_STAB].kP(ROLL_STAB_P);
-	pids[PID_YAW_STAB].kP(YAW_STAB_P);
-
+	// Set the maximum tilt angles
+	vechicleType.angle_max = DEFAULT_ANGLE_MAX;
 
 	// If we are calibrating ESCs, do that now
 	if (ESC_CALIBRATE == ENABLED) {
 		hal.console->println("Entering ESC calibration now....");
-		motors.calibrate_ESCs();
+//		motors.calibrate_ESCs();
 	}
 
 	if (!Init_Arducopter()) {
@@ -195,12 +199,13 @@ void setup()
 
 	while (!sensorsReady) {
 		// Wait until we have orientation data
-		while (ins.num_samples_available() == 0);
+		ins.wait_for_sample();
 
 		hal.scheduler->delay(50);
-		ins.update();
-		float sensor_roll,sensor_pitch,sensor_yaw;
-		ins.quaternion.to_euler(&sensor_roll, &sensor_pitch, &sensor_yaw);
+		ahrs.update();
+		float sensor_roll = ahrs.roll,
+				sensor_pitch = ahrs.pitch,
+				sensor_yaw = ahrs.yaw;
 
 		// If there is no previous sensor data, set it now
 		if (prev_sensor_roll == EMPTY) {
@@ -238,16 +243,18 @@ void setup()
 
 	}
 
-	motors.init_yaw();
+	// Setup RC receiver
+	radio.init();
 
-//	accel_calibration();
+	// Setup motors for output
+	motors.init();
 
-	Setup_Motors();
-
-	// Turn on green/blue light
+	// Turn on green/blue light to let user know we are ready to go
 	a_led->write(HAL_GPIO_LED_OFF);
 	b_led->write(HAL_GPIO_LED_OFF);
 	c_led->write(HAL_GPIO_LED_ON);
+
+	lastMode = NO_MODE;
 
 }
 
@@ -255,10 +262,9 @@ void loop()
 {
 	uint32_t currentMillis = hal.scheduler->millis();
 	
-	while (ins.num_samples_available() == 0);
+	ins.wait_for_sample();
 
 	// Execute the fast loop
-	// ---------------------
 	fast_loop();
 
 	if(currentMillis - mediumLoopLastExecute >= mediumLoopExecute)
@@ -272,154 +278,88 @@ void loop()
 		slowLoopLastExecute = currentMillis;
 		slow_loop();
 	}
-	// Test each individual motor
-//	motor_Test();
-
-	// Test and display accelerometer/gyro values
-//	accel_Gyro_Test();
 
 	loop_count++;
 }
 
 // Main loop - 100hz
-static void fast_loop() {
+void fast_loop() {
 
 	//update the Gd_t integration time
 	uint32_t timer = hal.scheduler->micros();
-	Gd_t = (float)(fastLoopTimer - timer) / 1000000.0f;
-	fastLoopTimer = timer;
+    G_Dt = (float)(timer - fastLoopTimer) / 1000000.f;
+    fastLoopTimer = timer;
 
     // IMU DCM Algorithm
     ahrs.update();
-	ins.update();
 
-	update_trig();
+    // Read in RC inputs
+    radio.read();
 
-	// Get RC values
-	uint16_t channels[8];
-	hal.rcin->read(channels, 8);
-
-	// Scale the yaw, roll, and pitch values in the rc_channels array
-	rc_channels[RC_CHANNEL_YAW] = map(
-			channels[RC_CHANNEL_YAW],
-			RC_YAW_MIN,
-			RC_YAW_MAX,
-			RC_YAW_MIN_SCALED,
-			RC_YAW_MAX_SCALED);
-
-	rc_channels[RC_CHANNEL_ROLL] = map(
-			channels[RC_CHANNEL_ROLL],
-			RC_ROLL_MIN,
-			RC_ROLL_MAX,
-			RC_ROLL_MIN_SCALED,
-			RC_ROLL_MAX_SCALED);
-
-	rc_channels[RC_CHANNEL_PITCH] = -map(
-			channels[RC_CHANNEL_PITCH],
-			RC_PITCH_MIN,
-			RC_PITCH_MAX,
-			RC_PITCH_MIN_SCALED,
-			RC_PITCH_MAX_SCALED);
-
-	rc_channels[RC_CHANNEL_THROTTLE] = channels[RC_CHANNEL_THROTTLE];
-
-//	if (DEBUG == ENABLED) {
-//		if (loop_count % 20 == 0) {
-////			hal.console->printf("Channels: [1]: %u\t [2]: %u\t [3]: %u\t [4]: %u\t [5]: %u\t [6]: %u\t [7]: %u \t [8]: %u\n",
-////					channels[0], channels[1], channels[2], channels[3], channels[4], channels[5], channels[6], channels[7]);
-//
-//			hal.console->printf("Throttle: %ld\t Roll: %u (%ld)\t Pitch: %u (%ld)\t Yaw: %u (%ld)\n",
-//					rc_channels[RC_CHANNEL_THROTTLE],
-//					channels[RC_CHANNEL_ROLL], rc_channels[RC_CHANNEL_ROLL],
-//					channels[RC_CHANNEL_PITCH], rc_channels[RC_CHANNEL_PITCH],
-//					channels[RC_CHANNEL_YAW], rc_channels[RC_CHANNEL_YAW]);
-//		}
-//	}
-
-	// DEBUGGING PURPOSES ONLY ///////////////////////////////
-	//	rc_channels[RC_CHANNEL_THROTTLE] = RC_THROTTLE_MIN + 400;
-//		rc_channels[RC_CHANNEL_ROLL] = 0;
-//		rc_channels[RC_CHANNEL_PITCH] = 0;
-//		rc_channels[RC_CHANNEL_YAW] = 0;
-
-	//fixes any fuck ups in the transmitter
-	if(rc_channels[RC_CHANNEL_ROLL] > 10)
-	{
-		rc_channels[RC_CHANNEL_ROLL] -= 10;
-	}else if(rc_channels[RC_CHANNEL_ROLL] < 10)
-	{
-		rc_channels[RC_CHANNEL_ROLL] += 10;
-	}else{
-		rc_channels[RC_CHANNEL_ROLL] = 0;
-	}
-
-	if(rc_channels[RC_CHANNEL_PITCH] > 10)
-	{
-		rc_channels[RC_CHANNEL_PITCH] -= 10;
-	}else if(rc_channels[RC_CHANNEL_PITCH] < 10)
-	{
-		rc_channels[RC_CHANNEL_PITCH] += 10;
-	}else{
-		rc_channels[RC_CHANNEL_PITCH] = 0;
-	}
-
-	if(rc_channels[RC_CHANNEL_YAW] > 15)
-	{
-		rc_channels[RC_CHANNEL_YAW] -= 15;
-	}else if(rc_channels[RC_CHANNEL_YAW] < 10)
-	{
-		rc_channels[RC_CHANNEL_YAW] += 10;
-	}else{
-		rc_channels[RC_CHANNEL_YAW] = 0;
-	}
-
-
-	if((rc_channels[RC_CHANNEL_THROTTLE] <= RC_THROTTLE_MIN + 75 && rc_channels[RC_CHANNEL_YAW] > (RC_YAW_MAX_SCALED - 25)))
-	{
-		if(lastMode != ACCEL_CALIBRATE_MODE)
-		{
-			lastModeSelectTime = hal.scheduler->millis();
-			modeSelectTimer = 0;
-			lastMode = ACCEL_CALIBRATE_MODE;
-		}
-
-		uint32_t currentTime = hal.scheduler->millis();
-		modeSelectTimer += currentTime - lastModeSelectTime;
-		lastModeSelectTime = currentTime;
-	}
-
-	if(lastMode == ACCEL_CALIBRATE_MODE && modeSelectTimer > MODE_SELECT_TIME){
-		//flash the leds 3 times so we know it needs to be calibrated
-		for(int i = 0; i < 4; i++)
-		{
-			a_led->write(HAL_GPIO_LED_OFF);
-			b_led->write(HAL_GPIO_LED_OFF);
-			c_led->write(HAL_GPIO_LED_OFF);
-			hal.scheduler->delay(1000);
-			a_led->write(HAL_GPIO_LED_ON);
-			b_led->write(HAL_GPIO_LED_ON);
-			c_led->write(HAL_GPIO_LED_ON);
-			hal.scheduler->delay(1000);
-		}
-		// Initialize MPU6050 sensor
-		float roll_trim, pitch_trim;
-		AP_InertialSensor_UserInteractStream interact(hal.console);
-		if(!ins.calibrate_accel(NULL, &interact, roll_trim, pitch_trim)){
-			while (true) {
-				a_led->write(HAL_GPIO_LED_OFF);
-				hal.scheduler->delay(1000);
-				a_led->write(HAL_GPIO_LED_ON);
-				hal.scheduler->delay(1000);
+	if(radio.getRCThrottle()->radio_in <= radio.getRCThrottle()->radio_min  + 75) {
+		if (radio.getRCYaw()->radio_in > (radio.getRCYaw()->radio_max - 25)) {
+			if(lastMode != MOTORS_ARMED)
+			{
+				lastModeSelectTime = hal.scheduler->millis();
+				modeSelectTimer = 0;
+				lastMode = MOTORS_ARMED;
 			}
+
+			uint32_t currentTime = hal.scheduler->millis();
+			modeSelectTimer += currentTime - lastModeSelectTime;
+			lastModeSelectTime = currentTime;
+
+		} else if (radio.getRCYaw()->radio_in < (radio.getRCYaw()->radio_min  + 25)) {
+
+			if(lastMode != MOTORS_DISARMED)
+			{
+				lastModeSelectTime = hal.scheduler->millis();
+				modeSelectTimer = 0;
+				lastMode = MOTORS_DISARMED;
+			}
+
+			uint32_t currentTime = hal.scheduler->millis();
+			modeSelectTimer += currentTime - lastModeSelectTime;
+			lastModeSelectTime = currentTime;
 		}
 
-		ins.push_accel_offsets_to_dmp();
-		ins.push_gyro_offsets_to_dmp();
-		lastMode = NO_MODE;
+	}
+
+	if(modeSelectTimer > MODE_SELECT_TIME) {
+		switch (lastMode) {
+		case MOTORS_ARMED:
+			hal.console->print("motors armed\n");
+			motors.getMotors()->armed(true);
+			break;
+		case MOTORS_DISARMED:
+			hal.console->print("motors disarmed\n");
+			motors.getMotors()->armed(false);
+			break;
+		}
 		modeSelectTimer = 0;
+		lastMode = NO_MODE;
 	}
 
 
+	// run low level rate controllers that only require IMU data
+	attitude.rate_controller_run();
+
+	// Send radio output (modified with stabilize control) to motors.
+	// This function only outputs a signal to the ESCs if the motors are armed AND enabled.
+	motors.getMotors()->output();
+
+#if DEBUG == ENABLED
+	if (loop_count % 20 == 0) {
+		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\n",
+				motors.getMotors()->motor_out[2],
+				motors.getMotors()->motor_out[0],
+				motors.getMotors()->motor_out[1],
+				motors.getMotors()->motor_out[3]);
+	}
+#endif
+
+	// run the attitude controllers
+	stabilize_run();
 
 	// Update readings from LIDAR and Optical Flow sensors
 #if LIDAR == ENABLED
@@ -435,18 +375,14 @@ static void fast_loop() {
 #endif
 #endif
 
-//	motor_Test();
-	// Output throttle response to motors
-	motors.output();
 }
 
-static void medium_loop() {
-//	hal.console->printf("Medium loop time: %lu\n", hal.scheduler->millis());
+void medium_loop() {
 
 
 }
 
-static void slow_loop() {
+void slow_loop() {
 
 	// TODO - Check failsafes
 }
@@ -460,36 +396,6 @@ static void slow_loop() {
 long map(long x, long in_min, long in_max, long out_min, long out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-static void update_trig() {
-    Vector2f yawvector;
-    const Matrix3f &temp   = ahrs.get_dcm_matrix();
-
-    yawvector.x = temp.a.x; 	// sin
-    yawvector.y = temp.b.x;		// cos
-    yawvector.normalize();
-
-    cos_pitch_x = safe_sqrt(1 - (temp.c.x * temp.c.x));	 // level = 1
-    cos_roll_x  = temp.c.z / cos_pitch_x;				 // level = 1
-
-    cos_pitch_x = constrain_float(cos_pitch_x, 0, 1.0);
-    // this relies on constrain_float() of infinity doing the right thing,
-    // which it does do in avr-libc
-    cos_roll_x = constrain_float(cos_roll_x, -1.0, 1.0);
-
-    sin_yaw = constrain_float(yawvector.y, -1.0, 1.0);
-    cos_yaw = constrain_float(yawvector.x, -1.0, 1.0);
-
-    // added to convert earth frame to body frame for rate controllers
-    sin_pitch = -temp.c.x;
-    sin_roll  = temp.c.y / cos_pitch_x;
-
-    //flat:
-    // 0 ° = cos_yaw:  1.00, sin_yaw:  0.00,
-    // 90° = cos_yaw:  0.00, sin_yaw:  1.00,
-    // 180 = cos_yaw: -1.00, sin_yaw:  0.00,
-    // 270 = cos_yaw:  0.00, sin_yaw: -1.00,
 }
 
 AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).

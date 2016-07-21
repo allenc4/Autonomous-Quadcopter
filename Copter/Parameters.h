@@ -60,7 +60,8 @@ public:
 
         //
         // 170: Radio settings
-        //
+        k_param_throttle_mid,
+
 
         //
         // 200: Feed-forward gains
@@ -76,6 +77,24 @@ public:
 
         //
         // 240: PID Controllers
+		k_param_acro_p,
+		k_param_pid_rate_roll,
+		k_param_pid_rate_pitch,
+		k_param_pid_rate_yaw,
+		k_param_p_stabilize_roll,
+		k_param_p_stabilize_pitch,
+		k_param_p_stabilize_yaw,
+		k_param_pi_loiter_lat,
+		k_param_pi_loiter_lon,
+		k_param_pid_loiter_rate_lat,
+		k_param_pid_loiter_rate_lon,
+		k_param_pi_alt_hold,
+		k_param_pid_throttle,
+		k_param_pid_optflow_roll,
+		k_param_pid_optflow_pitch,
+		k_param_acro_balance_roll,      // scalar (not PID)
+		k_param_acro_balance_pitch,     // scalar (not PID)
+		k_param_pid_throttle_accel, // 241
         //
         // Heading-to-roll PID:
         // heading error from command to roll command deviation from trim
@@ -149,12 +168,31 @@ public:
     // Waypoints
     //
 
+	// PI/D controllers
+	AC_PID                  pid_rate_roll;
+	AC_PID                  pid_rate_pitch;
+	AC_PID                  pid_rate_yaw;
+	AC_PID                  pid_loiter_rate_lat;
+	AC_PID                  pid_loiter_rate_lon;
+
+	AC_PID                  pid_throttle;
+	AC_PID                  pid_throttle_accel;
+	AC_PID                  pid_optflow_roll;
+	AC_PID                  pid_optflow_pitch;
+
+	APM_PI                  pi_loiter_lat;
+	APM_PI                  pi_loiter_lon;
+	AC_P                    p_stabilize_roll;
+	AC_P                    p_stabilize_pitch;
+	AC_P                    p_stabilize_yaw;
+	APM_PI                  pi_alt_hold;
+
     // Fly-by-wire
     //
 
 
     // Throttle
-    //
+	AP_Int16        throttle_mid;
 
 
 	// Failsafe
@@ -176,6 +214,36 @@ public:
 	AP_Int16	pack_capacity;		// Battery pack capacity less reserve
 	AP_Vector3f	accel_offsets;
 	AP_Vector3f	accel_scale;
+
+	Parameters():
+		// PID controller	initial P	        initial I		    initial D
+		//          initial imax
+		//-----------------------------------------------------------------------------------------------------
+		pid_rate_roll           (RATE_ROLL_P,           RATE_ROLL_I,            RATE_ROLL_D,            RATE_ROLL_IMAX * 100),
+		pid_rate_pitch          (RATE_PITCH_P,          RATE_PITCH_I,           RATE_PITCH_D,           RATE_PITCH_IMAX * 100),
+		pid_rate_yaw            (RATE_YAW_P,            RATE_YAW_I,             RATE_YAW_D,             RATE_YAW_IMAX * 100),
+
+		pid_loiter_rate_lat     (LOITER_RATE_P,         LOITER_RATE_I,          LOITER_RATE_D,          LOITER_RATE_IMAX * 100),
+		pid_loiter_rate_lon     (LOITER_RATE_P,         LOITER_RATE_I,          LOITER_RATE_D,          LOITER_RATE_IMAX * 100),
+
+		pid_throttle            (THROTTLE_P,            THROTTLE_I,             THROTTLE_D,             THROTTLE_IMAX),
+		pid_throttle_accel      (THROTTLE_ACCEL_P,      THROTTLE_ACCEL_I,       THROTTLE_ACCEL_D,       THROTTLE_ACCEL_IMAX),
+		pid_optflow_roll        (OPTFLOW_ROLL_P,        OPTFLOW_ROLL_I,         OPTFLOW_ROLL_D,         OPTFLOW_IMAX * 100),
+		pid_optflow_pitch       (OPTFLOW_PITCH_P,       OPTFLOW_PITCH_I,        OPTFLOW_PITCH_D,        OPTFLOW_IMAX * 100),
+
+		// PI controller	initial P			initial I			initial
+		// imax
+		//----------------------------------------------------------------------
+		pi_loiter_lat           (LOITER_P,              LOITER_I,               LOITER_IMAX * 100),
+		pi_loiter_lon           (LOITER_P,              LOITER_I,               LOITER_IMAX * 100),
+
+		p_stabilize_roll       (STABILIZE_ROLL_P),
+		p_stabilize_pitch      (STABILIZE_PITCH_P),
+		p_stabilize_yaw        (STABILIZE_YAW_P),
+
+		pi_alt_hold             (ALT_HOLD_P,            ALT_HOLD_I,             ALT_HOLD_IMAX)
+	{
+	}
 
 };
 

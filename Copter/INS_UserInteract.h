@@ -16,7 +16,7 @@
 
 class INS_UserInteract : public AP_InertialSensor_UserInteract {
 public:
-    uint8_t blocking_read();
+    bool blocking_read();
     void _printf_P(const prog_char *str, ...);
 };
 

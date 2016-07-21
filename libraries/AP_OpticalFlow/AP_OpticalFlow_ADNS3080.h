@@ -73,7 +73,7 @@ public:
     AP_OpticalFlow_ADNS3080();
 
     // initialise the sensor
-    bool    init();
+    void    init();
 
     // read latest values from sensor and fill in x,y and totals,
     // returns true on successful read
@@ -103,7 +103,6 @@ private:
 
     // SPI device
     AP_HAL::SPIDeviceDriver *_spi;
-
 };
 
 #endif

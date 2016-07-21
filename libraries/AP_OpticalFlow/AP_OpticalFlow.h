@@ -30,7 +30,6 @@
  */
 
 #include <AP_Math.h>
-#include <AP_HAL.h>
 
 class AP_OpticalFlow
 {
@@ -38,10 +37,9 @@ public:
     // constructor
     AP_OpticalFlow() {
         _flags.healthy = false;
-        x = 0; y = 0;
     };
 
-    virtual bool init();
+    virtual void init();
 
     // healthy - return true if the sensor is healthy
     bool    healthy() const { return _flags.healthy; }
@@ -66,8 +64,6 @@ public:
 
     // public variables for reporting purposes
     float    x_cm, y_cm;                    // x,y position in cm
-    float	 x, y;
-    float	 vlon, vlat;
 
 protected:
 
