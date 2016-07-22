@@ -196,41 +196,40 @@ void Setup_Motors() {
 	motors.armed(false);
 }
 
+/**
+ * Initializes the rc_channels array holding the RC_Channel objects for roll, pitch, throttle, and yaw.
+ * Sets up the radio min and max values, and sets the radio trim for each channel based on the values
+ * saved in EEPROM
+ */
 void Setup_RC_Channels() {
+
 	rc_channels[RC_CHANNEL_ROLL].radio_min = RC_ROLL_MIN;
 	rc_channels[RC_CHANNEL_ROLL].radio_max = RC_ROLL_MAX;
 	rc_channels[RC_CHANNEL_ROLL].set_angle(4500);
 	rc_channels[RC_CHANNEL_ROLL].set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+	rc_channels[RC_CHANNEL_ROLL].set_pwm(g.roll_trim.get());  // Used to trim the radio
 
 	rc_channels[RC_CHANNEL_PITCH].radio_min = RC_PITCH_MIN;
 	rc_channels[RC_CHANNEL_PITCH].radio_max = RC_PITCH_MAX;
 	rc_channels[RC_CHANNEL_PITCH].set_angle(4500);
 	rc_channels[RC_CHANNEL_PITCH].set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+	rc_channels[RC_CHANNEL_PITCH].set_pwm(g.pitch_trim.get());
 
 	rc_channels[RC_CHANNEL_YAW].radio_min = RC_YAW_MIN;
 	rc_channels[RC_CHANNEL_YAW].radio_max = RC_YAW_MAX;
 	rc_channels[RC_CHANNEL_YAW].set_angle(4500);
 	rc_channels[RC_CHANNEL_YAW].set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+	rc_channels[RC_CHANNEL_YAW].set_pwm(g.yaw_trim.get());
 
 	rc_channels[RC_CHANNEL_THROTTLE].radio_min = RC_THROTTLE_MIN;
 	rc_channels[RC_CHANNEL_THROTTLE].radio_max = RC_THROTTLE_MAX;
 	rc_channels[RC_CHANNEL_THROTTLE].set_range(0, 1000);
 	rc_channels[RC_CHANNEL_THROTTLE].set_range_out(0, 1000);
+	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(g.throttle_trim.get());
 
-	// Set trim values to be in the middle for roll, pitch, yaw and min for throttle
-	for (int i = 0; i < 30; i++) {
-		// Read RC values
-		uint16_t periods[8];
-		hal.rcin->read(periods, RC_CHANNEL_MAX+1);
-
-		for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
-			rc_channels[i].set_pwm(periods[i]);
-		}
-
-		hal.scheduler->delay(20);
-	}
-
-	for (int i = 0; i < 4; i++) {
+	// Set trim values for each channel
+	// Each channel was manually set a PWM value above with the default trim values loaded from EEPROM
+	for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
 		rc_channels[i].trim();
 	}
 

@@ -368,6 +368,42 @@ const AP_Param::Info var_info[] PROGMEM = {
 		// @Increment: 1
 		GSCALAR(throttle_mid,        "THR_MID",    THROTTLE_MID_DEFAULT),
 
+		// @Param: ROLL_TRIM
+		// @DisplayName: Roll Trim Position
+		// @Description: The roll output when roll stick is in the center position (when stick is released).
+		// @User: Standard
+		// @Range: RC_ROLL_MIN - RC_ROLL_MAX
+		// @Units: pwm
+		// @Increment: 1
+		GSCALAR(roll_trim,			"ROLL_TRIM",	(RC_ROLL_MAX + RC_ROLL_MIN)/2),
+
+		// @Param: PITCH_TRIM
+		// @DisplayName: Pitch Trim Position
+		// @Description: The pitch output when pitch stick is in the center position (when stick is released).
+		// @User: Standard
+		// @Range: RC_PITCH_MIN - RC_PITCH_MAX
+		// @Units: pwm
+		// @Increment: 1
+		GSCALAR(pitch_trim,			"PITCH_TRIM",	(RC_PITCH_MAX + RC_PITCH_MIN)/2),
+
+		// @Param: THROTTLE_TRIM
+		// @DisplayName: Throttle Trim Position
+		// @Description: The throttle output when throttle stick is all the way down in the starting position.
+		// @User: Standard
+		// @Range: RC_THROTTLE_MIN - RC_THROTTLE_MAX
+		// @Units: pwm
+		// @Increment: 1
+		GSCALAR(throttle_trim,		"THROTTLE_TRIM",	RC_THROTTLE_MIN),
+
+		// @Param: YAW_TRIM
+		// @DisplayName: Yaw Trim Position
+		// @Description: The yaw output when yaw stick is in the center position (when stick is released).
+		// @User: Standard
+		// @Range: RC_YAW_MIN - RC_YAW_MAX
+		// @Units: pwm
+		// @Increment: 1
+		GSCALAR(yaw_trim,			"YAW_TRIM",		(RC_YAW_MAX + RC_YAW_MIN)/2),
+
 
 	AP_VAREND
 };

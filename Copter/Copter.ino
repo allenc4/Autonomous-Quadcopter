@@ -59,12 +59,6 @@
 //#include "RadioController.h"
 #include "RangeFinder_Lidar.h"
 
-// Function definitions
-void fast_loop();
-void medium_loop();
-void slow_loop();
-long map(long x, long in_min, long in_max, long out_min, long out_max);
-
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
 AP_Vehicle::MultiCopter vechicleType;
@@ -109,7 +103,8 @@ RC_Channel rc_channels[] {
 		RC_Channel(RC_CHANNEL_ROLL),
 		RC_Channel(RC_CHANNEL_PITCH),
 		RC_Channel(RC_CHANNEL_THROTTLE),
-		RC_Channel(RC_CHANNEL_YAW)
+		RC_Channel(RC_CHANNEL_YAW),
+		RC_Channel(RC_CHANNEL_AUX_1)
 };
 
 // LIDAR Lite
@@ -260,7 +255,6 @@ void setup()
 	// Setup RC receiver
 	Setup_RC_Channels();
 
-
 	// Setup motors for output
 	Setup_Motors();
 
@@ -310,6 +304,7 @@ void fast_loop() {
 
     // Read in RC inputs
     rc_read();
+
 
 	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in <= rc_channels[RC_CHANNEL_THROTTLE].radio_min  + 75) {
 		if (rc_channels[RC_CHANNEL_YAW].radio_in > (rc_channels[RC_CHANNEL_YAW].radio_max - 25)) {
@@ -406,15 +401,15 @@ void fast_loop() {
 	// This function only outputs a signal to the ESCs if the motors are armed AND enabled.
 	motors.output();
 
-#if DEBUG == ENABLED
-	if (loop_count % 20 == 0) {
-		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\n",
-				motors.motor_out[2],
-				motors.motor_out[0],
-				motors.motor_out[1],
-				motors.motor_out[3]);
-	}
-#endif
+//#if DEBUG == ENABLED
+//	if (loop_count % 20 == 0) {
+//		hal.console->printf("Motor FL: %d\t FR: %d\t BL: %d\t BR: %d\n",
+//				motors.motor_out[2],
+//				motors.motor_out[0],
+//				motors.motor_out[1],
+//				motors.motor_out[3]);
+//	}
+//#endif
 
 	// run the attitude controllers
 #if OPTFLOW == ENABLED
@@ -451,14 +446,38 @@ void medium_loop() {
 void slow_loop() {
 
 	// TODO - Check failsafes
+
+	cliCommands();
 }
 
 void rc_read() {
 	// Read RC values
-	rc_channels[RC_CHANNEL_ROLL].set_pwm(hal.rcin->read(RC_CHANNEL_ROLL));
-	rc_channels[RC_CHANNEL_PITCH].set_pwm(hal.rcin->read(RC_CHANNEL_PITCH));
-	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(hal.rcin->read(RC_CHANNEL_THROTTLE));
-	rc_channels[RC_CHANNEL_YAW].set_pwm(hal.rcin->read(RC_CHANNEL_YAW));
+
+	if (hal.rcin->new_input()) {
+		rc_channels[RC_CHANNEL_ROLL].set_pwm(hal.rcin->read(RC_CHANNEL_ROLL));
+		rc_channels[RC_CHANNEL_PITCH].set_pwm(hal.rcin->read(RC_CHANNEL_PITCH));
+		rc_channels[RC_CHANNEL_THROTTLE].set_pwm(hal.rcin->read(RC_CHANNEL_THROTTLE));
+		rc_channels[RC_CHANNEL_YAW].set_pwm(hal.rcin->read(RC_CHANNEL_YAW));
+
+	}
+
+#if DEBUG == ENABLED
+	if (loop_count % 20 == 0) {
+		hal.console->printf("Roll CI: %d\t RI: %d\t\t Pitch CI: %d RI: %d\t\t Throttle CI: %d RI: %d\t\t Yaw CI: %d RI: %d\t\t"
+				"CH5 CI: %d\t RI: %d\n",
+				rc_channels[RC_CHANNEL_ROLL].control_in,
+				rc_channels[RC_CHANNEL_ROLL].radio_in,
+				rc_channels[RC_CHANNEL_PITCH].control_in,
+				rc_channels[RC_CHANNEL_PITCH].radio_in,
+				rc_channels[RC_CHANNEL_THROTTLE].control_in,
+				rc_channels[RC_CHANNEL_THROTTLE].radio_in,
+				rc_channels[RC_CHANNEL_YAW].control_in,
+				rc_channels[RC_CHANNEL_YAW].radio_in,
+				rc_channels[RC_CHANNEL_AUX_1].control_in,
+				rc_channels[RC_CHANNEL_AUX_1].radio_in);
+	}
+#endif
+
 }
 
 /**
@@ -470,6 +489,32 @@ void rc_read() {
 long map(long x, long in_min, long in_max, long out_min, long out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+/**
+ * Runs various command line functions based on user input (if any). Relies on DEBUG value being enabled.
+ * Should not be called if DEBUG is DISABLED (ie. we are flying)...
+ */
+void cliCommands() {
+
+#if DEBUG == ENABLED
+	// Check if user wants to trim values
+	if (hal.console->available()) {
+		if (hal.console->read() == 't') {
+			hal.console->println("Trimming RC channels");
+			for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
+				rc_channels[i].trim();
+			}
+
+			// Save trim values to eeprom
+			g.roll_trim.set_and_save(rc_channels[RC_CHANNEL_ROLL].radio_in);
+			g.pitch_trim.set_and_save(rc_channels[RC_CHANNEL_PITCH].radio_in);
+			g.yaw_trim.set_and_save(rc_channels[RC_CHANNEL_YAW].radio_in);
+			g.throttle_trim.set_and_save(rc_channels[RC_CHANNEL_THROTTLE].radio_in);
+		}
+	}
+#endif
+
 }
 
 AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).

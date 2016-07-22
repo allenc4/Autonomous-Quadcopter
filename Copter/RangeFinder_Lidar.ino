@@ -31,8 +31,8 @@ bool RangeFinder_Lidar::update() {
 	///////////////////////////////////////////////////////////////////
 	// FOR TESTING OF OPTICAL FLOW SENSOR ONLY
 	///////////////////////////////////////////////////////////////////
-	distCM = 49;
-	return true;
+//	distCM = 49;
+//	return true;
 
 	timeLastUpdate = hal.scheduler->millis();
 

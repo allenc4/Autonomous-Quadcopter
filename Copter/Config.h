@@ -15,7 +15,7 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG			ENABLED
+#define DEBUG			DISABLED
 #define ESC_CALIBRATE	DISABLED
 #define ACCEL_CALIBRATE DISABLED
 

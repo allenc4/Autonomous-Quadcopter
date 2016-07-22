@@ -61,6 +61,10 @@ public:
         //
         // 170: Radio settings
         k_param_throttle_mid,
+		k_param_roll_trim,
+		k_param_pitch_trim,
+		k_param_throttle_trim,
+		k_param_yaw_trim,
 
 
         //
@@ -193,7 +197,10 @@ public:
 
     // Throttle
 	AP_Int16        throttle_mid;
-
+	AP_Int16		roll_trim;
+	AP_Int16		pitch_trim;
+	AP_Int16		throttle_trim;
+	AP_Int16		yaw_trim;
 
 	// Failsafe
 
