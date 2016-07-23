@@ -93,7 +93,7 @@ int32_t OpticalFlow::get_of_roll(int32_t input_roll, int32_t input_yaw)
         tot_x_cm += _optflow.x_cm;
 
         // only stop roll if caller isn't modifying roll AND yaw (accounting for RC jitter)
-        if (abs(input_roll) <= 200 && abs(input_yaw) <= 200) {
+        if (abs(input_roll) <= 200 && abs(input_yaw) <= 200 && lidar->getLastDistance() >= 500) {
         	p = pids_optflow[PID_OPTFLOW_ROLL].get_p(-tot_x_cm);
         	i = pids_optflow[PID_OPTFLOW_ROLL].get_i(-tot_x_cm, 1.0f);
         	d = pids_optflow[PID_OPTFLOW_ROLL].get_d(-tot_x_cm, 1.0f);
@@ -125,9 +125,9 @@ int32_t OpticalFlow::get_of_roll(int32_t input_roll, int32_t input_yaw)
     }
 
     // limit max angle
-    _of_roll = constrain_int32(_of_roll, RC_ROLL_MIN_SCALED, RC_ROLL_MAX_SCALED);
+    of_roll = constrain_int32(of_roll, -1000, 1000);
 
-    return _of_roll;
+    return input_roll+of_roll;
 }
 
 int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
@@ -144,7 +144,7 @@ int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
         tot_y_cm += _optflow.y_cm;
 
         // only stop roll if caller isn't modifying pitch AND yaw (accounting for RC jitter)
-        if (abs(input_pitch) <= 200 && abs(input_yaw) <= 200) {
+        if (abs(input_pitch) <= 200 && abs(input_yaw) <= 200 && lidar->getLastDistance() >= 500) {
         	p = pids_optflow[PID_OPTFLOW_PITCH].get_p(tot_y_cm);
         	i = pids_optflow[PID_OPTFLOW_PITCH].get_i(tot_y_cm, 1.0f);
         	d = pids_optflow[PID_OPTFLOW_PITCH].get_d(tot_y_cm, 1.0f);
@@ -174,7 +174,7 @@ int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
     }
 
     // limit max angle
-    of_pitch = constrain_int32(of_pitch, RC_PITCH_MIN_SCALED, RC_PITCH_MAX_SCALED);
+    of_pitch = constrain_int32(of_pitch, -1000, 1000);
 
     return input_pitch+of_pitch;
 }

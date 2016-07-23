@@ -228,6 +228,8 @@ void AP_OpticalFlow_ADNS3080::clear_motion()
     y_cm = 0;
     dx = 0;
     dy = 0;
+    x = 0;
+    y = 0;
 }
 
 // get_pixel_data - captures an image from the sensor and stores it to the

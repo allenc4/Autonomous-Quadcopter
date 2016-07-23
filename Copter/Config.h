@@ -31,6 +31,11 @@
 // Barometer
 #define CONFIG_BARO     HAL_BARO_DEFAULT
 
+//direct sensor thresholds anything less than
+//these values is set to 0
+#define AHRS_ROLL_THRESHOLD 2
+#define AHRS_PITCH_THRESHOLD 2
+
 //modes
 //the time needed to hold controller in certain position to
 //change the mode
@@ -69,10 +74,13 @@
 // RC MIN and MAX values
 #define RC_YAW_MIN       966
 #define RC_YAW_MAX       1994
+#define RC_YAW_MID (RC_YAW_MAX + RC_YAW_MIN) / 2
 #define RC_PITCH_MIN     969
 #define RC_PITCH_MAX     1987
+#define RC_PITCH_MID (RC_PITCH_MAX + RC_PITCH_MIN) / 2
 #define RC_ROLL_MIN      969
 #define RC_ROLL_MAX      1984
+#define RC_ROLL_MID (RC_ROLL_MAX + RC_ROLL_MIN) / 2
 #define RC_THROTTLE_MIN  970
 #define RC_THROTTLE_MAX  1993
 

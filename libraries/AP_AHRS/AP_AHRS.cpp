@@ -16,6 +16,8 @@
 */
 #include <AP_AHRS.h>
 #include <AP_HAL.h>
+
+#include "Config.h"
 extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
@@ -253,8 +255,18 @@ void AP_AHRS::update_trig(void)
  */
 void AP_AHRS::update_cd_values(void)
 {
-    roll_sensor  = degrees(roll) * 100;
-    pitch_sensor = degrees(pitch) * 100;
+	float rolld = degrees(roll);
+	float pitchd = degrees(pitch);
+	if(fabs(rolld) < AHRS_ROLL_THRESHOLD)
+	{
+		rolld = 0;
+	}
+	if(fabs(pitchd) < AHRS_PITCH_THRESHOLD)
+	{
+		pitchd = 0;
+	}
+	roll_sensor  = rolld * 100;
+    pitch_sensor = pitchd * 100;
     yaw_sensor   = degrees(yaw) * 100;
     if (yaw_sensor < 0)
         yaw_sensor += 36000;

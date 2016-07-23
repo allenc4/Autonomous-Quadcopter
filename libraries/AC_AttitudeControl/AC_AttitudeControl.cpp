@@ -149,8 +149,20 @@ void AC_AttitudeControl::angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle
     	_angle_ef_target.x = roll_angle_ef;
         angle_ef_error.x = wrap_180_cd_float(_angle_ef_target.x - _ahrs.roll_sensor);
 
+//        hal.console->print("Roll Error: ");
+//        hal.console->print(angle_ef_error.x);
+//        hal.console->print("Roll Sensor: ");
+//        hal.console->print(_ahrs.roll_sensor);
+
+
     	_angle_ef_target.y = pitch_angle_ef;
         angle_ef_error.y = wrap_180_cd_float(_angle_ef_target.y - _ahrs.pitch_sensor);
+//
+//        hal.console->print("\tPitch Error: ");
+//        hal.console->print(angle_ef_error.y);
+//        hal.console->print("Pitch Sensor: ");
+//        hal.console->print(_ahrs.pitch_sensor);
+//        hal.console->println("");
 
         // set roll and pitch feed forward to zero
     	_rate_ef_desired.x = 0;

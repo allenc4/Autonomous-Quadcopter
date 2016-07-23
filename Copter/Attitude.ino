@@ -32,15 +32,15 @@ void stabilize_run()
 			target_roll,
 			target_pitch);
 
-//#if DEBUG == ENABLED
-//    if (loop_count % 20 == 0) {
-//		hal.console->printf("RCRollCi: %d\t RollTarg: %d\t RCPitCi: %d\t PitTarg: %d\t",
-//				rc_channels[RC_CHANNEL_ROLL].control_in,
-//				target_roll,
-//				rc_channels[RC_CHANNEL_PITCH].control_in,
-//				target_pitch);
-//    }
-//#endif
+#if DEBUG == ENABLED
+    if (loop_count % 20 == 0) {
+		hal.console->printf("RCRollCi: %d\t RollTarg: %d\t RCPitCi: %d\t PitTarg: %d\t",
+				rc_channels[RC_CHANNEL_ROLL].control_in,
+				target_roll,
+				rc_channels[RC_CHANNEL_PITCH].control_in,
+				target_pitch);
+    }
+#endif
 
     // get pilot's desired yaw rate
     target_yaw_rate = get_pilot_desired_yaw_rate(
@@ -122,6 +122,18 @@ void ofLoiter_run()
         // mix in user control with optical flow
         target_roll  = opticalFlow.get_of_roll(target_roll, rc_channels[RC_CHANNEL_YAW].control_in);
         target_pitch = opticalFlow.get_of_pitch(target_pitch, rc_channels[RC_CHANNEL_YAW].control_in);
+
+#if DEBUG == ENABLED
+       if(loop_count % 20 == 0)
+       {
+
+    	   hal.console->print("Target Roll: ");
+    	   hal.console->print(target_roll);
+    	   hal.console->print(" Target Pitch: ");
+    	   hal.console->print(target_pitch);
+    	   hal.console->println();
+       }
+#endif
 
         // call attitude controller
         attitude.angle_ef_roll_pitch_rate_ef_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());

@@ -306,8 +306,9 @@ void fast_loop() {
     rc_read();
 
 
+    //handle mode changes
 	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in <= rc_channels[RC_CHANNEL_THROTTLE].radio_min  + 75) {
-		if (rc_channels[RC_CHANNEL_YAW].radio_in > (rc_channels[RC_CHANNEL_YAW].radio_max - 25)) {
+		if (rc_channels[RC_CHANNEL_YAW].radio_in > (rc_channels[RC_CHANNEL_YAW].radio_max - 75)) {
 			if (motors.armed())
 			{
 				if (lastMode != CHANGE_FLIGHT_MODE) {
@@ -330,7 +331,7 @@ void fast_loop() {
 			modeSelectTimer += currentTime - lastModeSelectTime;
 			lastModeSelectTime = currentTime;
 
-		} else if (rc_channels[RC_CHANNEL_YAW].radio_in < (rc_channels[RC_CHANNEL_YAW].radio_min  + 25)) {
+		} else if (rc_channels[RC_CHANNEL_YAW].radio_in < (rc_channels[RC_CHANNEL_YAW].radio_min  + 75)) {
 
 			if(lastMode != MOTORS_DISARMED)
 			{
@@ -451,34 +452,63 @@ void slow_loop() {
 }
 
 void rc_read() {
-	// Read RC values
-
+	// Read RC values and constrain them to a threshold.
 	if (hal.rcin->new_input()) {
-		rc_channels[RC_CHANNEL_ROLL].set_pwm(hal.rcin->read(RC_CHANNEL_ROLL));
-		rc_channels[RC_CHANNEL_PITCH].set_pwm(hal.rcin->read(RC_CHANNEL_PITCH));
+
+		int16_t rollPwm = checkPwm(hal.rcin->read(RC_CHANNEL_ROLL),
+				rc_channels[RC_CHANNEL_ROLL].radio_trim, 30);
+
+		int16_t pitchPwm = checkPwm(hal.rcin->read(RC_CHANNEL_PITCH),
+				rc_channels[RC_CHANNEL_PITCH].radio_trim, 30);
+
+		int16_t yawPwm = checkPwm(hal.rcin->read(RC_CHANNEL_YAW),
+				rc_channels[RC_CHANNEL_YAW].radio_trim, 30);
+
+		rc_channels[RC_CHANNEL_ROLL].set_pwm(rollPwm);
+		rc_channels[RC_CHANNEL_PITCH].set_pwm(pitchPwm);
 		rc_channels[RC_CHANNEL_THROTTLE].set_pwm(hal.rcin->read(RC_CHANNEL_THROTTLE));
-		rc_channels[RC_CHANNEL_YAW].set_pwm(hal.rcin->read(RC_CHANNEL_YAW));
+		rc_channels[RC_CHANNEL_YAW].set_pwm(yawPwm);
 
 	}
 
-#if DEBUG == ENABLED
-	if (loop_count % 20 == 0) {
-		hal.console->printf("Roll CI: %d\t RI: %d\t\t Pitch CI: %d RI: %d\t\t Throttle CI: %d RI: %d\t\t Yaw CI: %d RI: %d\t\t"
-				"CH5 CI: %d\t RI: %d\n",
-				rc_channels[RC_CHANNEL_ROLL].control_in,
-				rc_channels[RC_CHANNEL_ROLL].radio_in,
-				rc_channels[RC_CHANNEL_PITCH].control_in,
-				rc_channels[RC_CHANNEL_PITCH].radio_in,
-				rc_channels[RC_CHANNEL_THROTTLE].control_in,
-				rc_channels[RC_CHANNEL_THROTTLE].radio_in,
-				rc_channels[RC_CHANNEL_YAW].control_in,
-				rc_channels[RC_CHANNEL_YAW].radio_in,
-				rc_channels[RC_CHANNEL_AUX_1].control_in,
-				rc_channels[RC_CHANNEL_AUX_1].radio_in);
-	}
-#endif
+//#if DEBUG == ENABLED
+//	if (loop_count % 20 == 0) {
+//		hal.console->printf("Roll CI: %d\t RI: %d\t M: %d\t\t Pitch CI: %d RI: %d\t M: %d\t\t Throttle CI: %d RI: %d\t\t Yaw CI: %d RI: %d\t M: %d\t\t"
+//				"CH5 CI: %d\t RI: %d\n",
+//				rc_channels[RC_CHANNEL_ROLL].control_in,
+//				rc_channels[RC_CHANNEL_ROLL].radio_in,
+//				RC_ROLL_MID,
+//				rc_channels[RC_CHANNEL_PITCH].control_in,
+//				rc_channels[RC_CHANNEL_PITCH].radio_in,
+//				RC_PITCH_MID,
+//				rc_channels[RC_CHANNEL_THROTTLE].control_in,
+//				rc_channels[RC_CHANNEL_THROTTLE].radio_in,
+//				rc_channels[RC_CHANNEL_YAW].control_in,
+//				rc_channels[RC_CHANNEL_YAW].radio_in,
+//				RC_YAW_MID,
+//				rc_channels[RC_CHANNEL_AUX_1].control_in,
+//				rc_channels[RC_CHANNEL_AUX_1].radio_in);
+//	}
+//#endif
 
 }
+
+/**
+ * Puts a threshold on the incoming radio pwm so that if the user isn't actively moving the stick it is set to the mid
+ * point.  This handles for any noise in the radio.
+ */
+int16_t checkPwm(int16_t pwm, int32_t mid, int32_t deadzone){
+	if(pwm > mid + deadzone)
+	{
+		return pwm - deadzone;
+	}else if(pwm < mid - deadzone)
+	{
+		return pwm + deadzone;
+	}else{
+		return mid;
+	}
+}
+
 
 /**
  *  Scales the x parameter and scales it so it is between a new min and max rangethat it represent something meaningful.
