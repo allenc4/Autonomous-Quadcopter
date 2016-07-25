@@ -6,7 +6,7 @@
 //      result is a number from 2 to 12 with 2 being very sluggish and 12 being very crisp
 float get_smoothing_gain()
 {
-    return (2.0f + (float) RC_FEEL_RP_MEDIUM / 10.0f);
+    return (2.0f + (float) RC_FEEL_RP_SOFT / 10.0f);
 }
 
 /**

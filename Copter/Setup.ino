@@ -18,11 +18,14 @@ bool Init_Arducopter() {
 	// mid-flight, so set the serial ports non-blocking once we are
 	// ready to fly
 
-	if (DEBUG != ENABLED) {
+#if DEBUG == DISABLED
 		hal.uartA->set_blocking_writes(false);
 		hal.uartB->set_blocking_writes(false);
 		hal.uartC->set_blocking_writes(false);
-	}
+#endif
+
+	// Initialize serial connection
+	serial.init(SERIAL1_BAUD);
 
 	// Initialize LEDs
 	hal.gpio->pinMode(13, HAL_GPIO_OUTPUT);
@@ -59,7 +62,7 @@ bool Init_Arducopter() {
 	// Reset gyro
 	ahrs.reset_gyro_drift();
 
-	if(!ins.calibrated() || ACCEL_CALIBRATE == ENABLED){
+	if(!ins.calibrated() || ACCEL_CALIBRATE == ENABLED) {
 		//flash the leds 3 times so we know it needs to be calibrated
 		for(int i = 0; i < 4; i++)
 		{
@@ -78,6 +81,10 @@ bool Init_Arducopter() {
 		if(!ins.calibrate_accel(&interact, roll_trim, pitch_trim)){
 			hal.scheduler->delay(500);
 			return false;
+		} else {
+			// Save the trims to EEPROM
+			g.accel_trim_pitch.set_and_save(pitch_trim);
+			g.accel_trim_roll.set_and_save(roll_trim);
 		}
 	}
 
@@ -89,9 +96,10 @@ bool Init_Arducopter() {
 	{
 		hal.console->println("Accelerometer is not calibrated.  Please Calibrate Before Continuing");
 		return false;
+	} else {
+		ahrs.set_trim(Vector3f(g.accel_trim_roll.get(), g.accel_trim_pitch.get(), 0));
 	}
 
-	// Push accelerometer and gyro offsets to DMP
 
 	// setup fast AHRS gains to get right attitude
 	ahrs.set_fast_gains(true);
@@ -213,6 +221,7 @@ void Setup_RC_Channels() {
 	rc_channels[RC_CHANNEL_PITCH].radio_max = RC_PITCH_MAX;
 	rc_channels[RC_CHANNEL_PITCH].set_angle(4500);
 	rc_channels[RC_CHANNEL_PITCH].set_type(RC_CHANNEL_TYPE_ANGLE_RAW);
+	rc_channels[RC_CHANNEL_PITCH].set_reverse(true);
 	rc_channels[RC_CHANNEL_PITCH].set_pwm(g.pitch_trim.get());
 
 	rc_channels[RC_CHANNEL_YAW].radio_min = RC_YAW_MIN;

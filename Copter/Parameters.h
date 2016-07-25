@@ -52,6 +52,8 @@ public:
 		k_param_input_voltage,
 		k_param_pack_capacity,
 		k_param_ins,
+		k_param_accel_trim_roll,
+		k_param_accel_trim_pitch,
 
 
         //
@@ -65,6 +67,7 @@ public:
 		k_param_pitch_trim,
 		k_param_throttle_trim,
 		k_param_yaw_trim,
+		k_param_hover_point,
 
 
         //
@@ -157,21 +160,6 @@ public:
     AP_Int16    format_version;
 	AP_Int8		software_type;
 
-	// Telemetry control
-	//
-
-    // Feed-forward gains
-    //
-
-    // Crosstrack navigation
-    //
-
-    // Estimation
-    //
-
-    // Waypoints
-    //
-
 	// PI/D controllers
 	AC_PID                  pid_rate_roll;
 	AC_PID                  pid_rate_pitch;
@@ -214,6 +202,7 @@ public:
 
     // Misc
     //
+	AP_Int32	hover_point;
     AP_Int8		battery_monitoring;	// 0=disabled, 3=voltage only, 4=voltage and current
     AP_Float	volt_div_ratio;
     AP_Float	curr_amp_per_volt;
@@ -221,6 +210,8 @@ public:
 	AP_Int16	pack_capacity;		// Battery pack capacity less reserve
 	AP_Vector3f	accel_offsets;
 	AP_Vector3f	accel_scale;
+	AP_Float	accel_trim_roll;
+	AP_Float	accel_trim_pitch;
 
 	Parameters():
 		// PID controller	initial P	        initial I		    initial D

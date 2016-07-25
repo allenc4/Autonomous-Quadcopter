@@ -69,7 +69,12 @@ bool RangeFinder_Lidar::update() {
 	}
 
 	// Combine results into a cm distance (taking into account the offset that the lidar is from the ground)
-	distCM = ((uint16_t)buf[0] << 8 | buf[1]) - _starting_distance_offset;
+	distCM = ((uint16_t)buf[0] << 8 | buf[1]);
+	if (distCM < _starting_distance_offset) {
+		distCM = 0;
+	} else {
+		distCM -= _starting_distance_offset;
+	}
 
 	i2c_sem->give();
 	numReadFails = 0;  // Reset numReadFails since we only count consecutive failures

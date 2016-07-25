@@ -8,14 +8,17 @@
 #include "AltHold.h"
 #include "AC_PID.h"
 #if LIDAR == ENABLED
-AltHold::AltHold(){
+AltHold::AltHold(RangeFinder *rf){
+	this->_rangefinder = rf;
+	this->_oldDistance = 0;
 	this->_lastState = ALTHOLD_STOPPED;
 	this->_lastThrottle = 0;
 	this->_lastVelUpdateTime = hal.scheduler->millis();
 	//start by estimating the hover point at half throttle
-	this->_hoverPoint = (RC_THROTTLE_MAX + RC_THROTTLE_MIN) / 2 - 100;
+	this->_hoverPoint = RC_THROTTLE_MIN + 300;
 	this->_lastHoverDown = this->_hoverPoint - ALTHOLD_CALC_HOVER_INCREMENT;
 	this->_lastHoverUp = this->_hoverPoint + ALTHOLD_CALC_HOVER_INCREMENT;
+	this->_gotLastDistance = false;
 
 	this->_distancePid = new PID(
 			ALTHOLD_DISTANCE_P,
@@ -102,7 +105,7 @@ void AltHold::holdAltitute(){
 	//map the throttle to the available height range
 	currentThrottle = this->_mapThrottle(currentThrottle, RC_THROTTLE_MIN, RC_THROTTLE_MAX, ALTHOLD_HEIGHT_MIN, ALTHOLD_HEIGHT_MAX);
 	int32_t currentState;
-	uint16_t currentDistance = lidar->getLastDistance();
+	uint16_t currentDistance = _rangefinder->getLastDistance();
 
 	//if we were taking off and haven't gotten to the proper height yet keep taking off
 	if(this->_lastState == ALTHOLD_TAKEOFF && currentDistance < ALTHOLD_HEIGHT_TAKEOFF)
@@ -174,7 +177,7 @@ void AltHold::_updateCurrentVelocity(){
 		return;
 	}
 
-	uint16_t currentDistance = lidar->getLastDistance();
+	uint16_t currentDistance = _rangefinder->getLastDistance();
 	float timeDiff = (float)currentTime - (float)this->_lastVelUpdateTime;
 	timeDiff /= 1000; //convert to seconds
 	float distanceDiff = (float)currentDistance - (float)this->_lastDistance;
@@ -187,18 +190,18 @@ void AltHold::_updateCurrentVelocity(){
 
 void AltHold::_updateVelocity(uint32_t targetDistance){
 
-	hal.console->print(" Target Distance: ");
-	hal.console->print(targetDistance);
+//	hal.console->print(" Target Distance: ");
+//	hal.console->print(targetDistance);
 
-	uint32_t currentDistance = lidar->getLastDistance();
+	uint32_t currentDistance = _rangefinder->getLastDistance();
 
-	hal.console->print(" Current Distance: ");
-	hal.console->print(currentDistance);
+//	hal.console->print(" Current Distance: ");
+//	hal.console->print(currentDistance);
 
 	float distanceError = (float)targetDistance - (float)currentDistance;
 
-	hal.console->print(" Distance Error: ");
-	hal.console->print(distanceError);
+//	hal.console->print(" Distance Error: ");
+//	hal.console->print(distanceError);
 
 	//this makes it so that we aren't trying to go super far in one frame
 	if(distanceError > this->_distanceLeashLength)
@@ -230,8 +233,8 @@ void AltHold::_updateVelocity(uint32_t targetDistance){
 void AltHold::_updateAcceleration(float targetVelocity)
 {
 
-	hal.console->print(" Target Velocity: ");
-	hal.console->print(targetVelocity);
+//	hal.console->print(" Target Velocity: ");
+//	hal.console->print(targetVelocity);
 
 	//removed the feedforward peice until i understand it
 	//believe it is just a performance thing
@@ -259,8 +262,8 @@ void AltHold::_updateAcceleration(float targetVelocity)
 
 void AltHold::_updateThrottleOutput(float targetAcceleration){
 
-	hal.console->print(" Target Accel: ");
-	hal.console->print(targetAcceleration);
+//	hal.console->print(" Target Accel: ");
+//	hal.console->print(targetAcceleration);
 
 	float acceleration = -(ahrs.get_accel_ef().z + GRAVITY_MSS) * 100.0f;
 
@@ -268,18 +271,18 @@ void AltHold::_updateThrottleOutput(float targetAcceleration){
 
 	float accelPidValue = this->_accelPid->get_pid(accelerationError);
 
-	hal.console->print(" Accel PID Value: ");
-	hal.console->print(accelPidValue);
-	hal.console->print(" /1000: ");
-	hal.console->print(accelPidValue/1000.0f);
+//	hal.console->print(" Accel PID Value: ");
+//	hal.console->print(accelPidValue);
+//	hal.console->print(" /1000: ");
+//	hal.console->print(accelPidValue/1000.0f);
 
 	float throttleOut = (accelPidValue/1000.0f) + this->_hoverPoint;
 
-	rc_channels[RC_CHANNEL_THROTTLE].radio_in = throttleOut;
+	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(throttleOut);
 
-	hal.console->print(" Throttle Output: ");
-	hal.console->print(throttleOut);
-	hal.console->println("");
+//	hal.console->print(" Throttle Output: ");
+//	hal.console->print(throttleOut);
+//	hal.console->println("");
 }
 
 // Proportional controller with piecewise sqrt sections to constrain second derivative
@@ -304,106 +307,121 @@ float AltHold::sqrt_controller(float error, float p, float second_ord_lim)
 bool AltHold::_caluclateHoverPoint(){
 	if(!this->_calculated)
 	{
-		int32_t oldDistance = lidar->getLastDistance();
+		if (!_gotLastDistance) {
+			_oldDistance = _rangefinder->getLastDistance();
+
+			if(_oldDistance < 2)
+			{
+				this->_hasRisen = false;
+			}
+			_gotLastDistance = true;
+		}
 		if(this->_calcHoverBeginTime == 0)
 		{
 			this->_calcHoverBeginTime = hal.scheduler->millis();
-		}else if(hal.scheduler->millis() - this->_calcHoverBeginTime > ALTHOLD_CALC_HOVER_TIMEOUT || oldDistance >= ALTHOLD_CALC_HOVER_HEIGHT_TIMEOUT - ALTHOLD_HEIGHT_THRESHOLD)
+		}else if(/*hal.scheduler->millis() - this->_calcHoverBeginTime > ALTHOLD_CALC_HOVER_TIMEOUT ||*/ _oldDistance >= ALTHOLD_CALC_HOVER_HEIGHT_TIMEOUT - ALTHOLD_HEIGHT_THRESHOLD)
 		{
-			hal.console->print(" TIMEOUT(");
-			hal.console->print(this->_hoverPoint);
-			hal.console->print(", ");
-			hal.console->print(oldDistance);
-			hal.console->print(", ");
-			hal.console->print(hal.scheduler->millis() - this->_calcHoverBeginTime);
-			hal.console->println(")");
+			a_led->write(HAL_GPIO_LED_OFF);
+			b_led->write(HAL_GPIO_LED_OFF);
+			c_led->write(HAL_GPIO_LED_OFF);
+//			hal.console->print(" TIMEOUT(");
+//			hal.console->print(this->_hoverPoint);
+//			hal.console->print(", ");
+//			hal.console->print(_oldDistance);
+//			hal.console->print(", ");
+//			hal.console->print(hal.scheduler->millis() - this->_calcHoverBeginTime);
+//			hal.console->println(")");
 			if(this->_hoverPoint > RC_THROTTLE_MIN + ALTHOLD_CALC_HOVER_INCREMENT)
 				this->_hoverPoint -= ALTHOLD_CALC_HOVER_INCREMENT;
 
 			return false;
 		}
 
-		rc_channels[RC_CHANNEL_THROTTLE].radio_in = this->_lastHover;
+		rc_channels[RC_CHANNEL_THROTTLE].set_pwm(this->_hoverPoint);
 
-		hal.console->print(" Old Distance: ");
-		hal.console->print(oldDistance);
+//		hal.console->print(" Old Distance: ");
+//		hal.console->print(_oldDistance);
 
-		hal.scheduler->delay(ALTHOLD_CALC_HOVER_DELAY);
+		if (loop_count % 20 == 0 && _gotLastDistance) {
+			_gotLastDistance = false;
+	//		hal.scheduler->delay(ALTHOLD_CALC_HOVER_DELAY);
 
-		uint16_t newDistance;
-		lidar->update(newDistance);
+			uint16_t newDistance;
+			_rangefinder->update(newDistance);
 
-		hal.console->print(" New Distance: ");
-		hal.console->print(newDistance);
+//			hal.console->print(" New Distance: ");
+//			hal.console->print(newDistance);
 
-		float distanceDiff = newDistance - oldDistance;
+			float distanceDiff = newDistance - _oldDistance;
 
-		hal.console->print(" Distance Diff: ");
-		hal.console->print(distanceDiff);
+//			hal.console->print(" Distance Diff: ");
+//			hal.console->print(distanceDiff);
 
-		if(newDistance > ALTHOLD_CALC_HOVER_MAX_HEIGHT)
-		{
-			hal.console->print(" Too High(");
-			hal.console->print(this->_lastHoverDown);
-			hal.console->print(")");
-			this->_hoverPoint = this->_lastHoverDown;
-			this->_heldTime = 0;
-		}else if(distanceDiff > ALTHOLD_CALC_HOVER_THRESHOLD)
-		{
-			this->_lastHoverUp = this->_hoverPoint;
-			this->_hoverPoint = (this->_hoverPoint + this->_lastHoverDown)/2;
-			this->_hasRisen = true;
-
-			hal.console->print(" We  Rose(");
-			hal.console->print(this->_hoverPoint);
-			hal.console->print(")");
-			this->_heldTime = 0;
-		}else if(distanceDiff < -ALTHOLD_CALC_HOVER_THRESHOLD)
-		{
-			this->_lastHoverDown = this->_hoverPoint;
-			this->_hoverPoint += ALTHOLD_CALC_HOVER_INCREMENT;
-
-			hal.console->print(" We  Drop(");
-			hal.console->print(this->_hoverPoint);
-			hal.console->print(")");
-			this->_heldTime = 0;
-		}else if(this->_hasRisen)
-		{
-			hal.console->print(" Hovering(");
-			hal.console->print(this->_hoverPoint);
-			hal.console->print(")");
-			int32_t currentTime = hal.scheduler->millis();
-
-			this->_heldTime += currentTime - this->_lastHoverCalcTime;
-			if(this->_heldTime >= ALTHOLD_CALC_HOVER_HELD_TIME)
+			if(newDistance > ALTHOLD_CALC_HOVER_MAX_HEIGHT)
 			{
-				hal.console->print(" CALCULATED");
-				this->_calculated = true;
-				//TODO: write to eeprom
+//				hal.console->print(" Too High(");
+//				hal.console->print(this->_lastHoverDown);
+//				hal.console->print(")");
+				this->_hoverPoint = this->_lastHoverDown;
+				this->_heldTime = 0;
+			}else if(distanceDiff > ALTHOLD_CALC_HOVER_THRESHOLD)
+			{
+				this->_lastHoverUp = this->_hoverPoint;
+				this->_hoverPoint = (this->_hoverPoint + this->_lastHoverDown)/2;
+				this->_hasRisen = true;
+
+//				hal.console->print(" We  Rose(");
+//				hal.console->print(this->_hoverPoint);
+//				hal.console->print(")");
+				this->_heldTime = 0;
+			}else if(distanceDiff < -ALTHOLD_CALC_HOVER_THRESHOLD)
+			{
+				this->_lastHoverDown = this->_hoverPoint;
+				this->_hoverPoint += ALTHOLD_CALC_HOVER_INCREMENT;
+
+//				hal.console->print(" We  Drop(");
+//				hal.console->print(this->_hoverPoint);
+//				hal.console->print(")");
+				this->_heldTime = 0;
+			}else if(this->_hasRisen)
+			{
+//				hal.console->print(" Hovering(");
+//				hal.console->print(this->_hoverPoint);
+//				hal.console->print(")");
+				int32_t currentTime = hal.scheduler->millis();
+
+				this->_heldTime += currentTime - this->_lastHoverCalcTime;
+				if(this->_heldTime >= ALTHOLD_CALC_HOVER_HELD_TIME)
+				{
+//					hal.console->print(" CALCULATED");
+					this->_calculated = true;
+					//TODO: write to eeprom
+//					g.hover_point.set_and_save(_hoverPoint);
+				}
+			}else if(!this->_hasRisen)
+			{
+				this->_hoverPoint += ALTHOLD_CALC_HOVER_INCREMENT;
+//				hal.console->print(" Getingup(");
+//				hal.console->print(this->_hoverPoint);
+//				hal.console->print(")");
+				this->_heldTime = 0;
 			}
-		}else if(!this->_hasRisen)
-		{
-			this->_hoverPoint += ALTHOLD_CALC_HOVER_INCREMENT;
-			hal.console->print(" Getingup(");
-			hal.console->print(this->_hoverPoint);
-			hal.console->print(")");
-			this->_heldTime = 0;
+
+			if(this->_hoverPoint > RC_THROTTLE_MAX)
+			{
+				this->_hoverPoint = RC_THROTTLE_MAX;
+//				hal.console->print(" To  MUCH(");
+//				hal.console->print(this->_hoverPoint);
+//				hal.console->print(")");
+			}
+
+			this->_lastHoverCalcTime = hal.scheduler->millis();
+
 		}
 
-		if(this->_hoverPoint > RC_THROTTLE_MAX)
-		{
-			this->_hoverPoint = RC_THROTTLE_MAX;
-			hal.console->print(" To  MUCH(");
-			hal.console->print(this->_hoverPoint);
-			hal.console->print(")");
-		}
-
-		this->_lastHover = this->_hoverPoint;
-		this->_lastHoverCalcTime = hal.scheduler->millis();
-
+//		hal.console->println("");
 	}
 
-	hal.console->println("");
 	return this->_calculated;
 }
 #endif

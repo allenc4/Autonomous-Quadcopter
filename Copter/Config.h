@@ -23,7 +23,7 @@
 #define LIDAR			ENABLED
 
 // Optical Flow sensor
-#define OPTFLOW			ENABLED
+#define OPTFLOW			DISABLED
 
 // Compass
 #define COMPASS			DISABLED
@@ -33,8 +33,8 @@
 
 //direct sensor thresholds anything less than
 //these values is set to 0
-#define AHRS_ROLL_THRESHOLD 2
-#define AHRS_PITCH_THRESHOLD 2
+#define AHRS_ROLL_THRESHOLD 	0 //2
+#define AHRS_PITCH_THRESHOLD 	0 //2
 
 //modes
 //the time needed to hold controller in certain position to

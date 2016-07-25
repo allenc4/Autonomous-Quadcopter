@@ -6,6 +6,7 @@
  *    See: https://github.com/ArduPilot/ardupilot
  *
  */
+#include "stdio.h"
 
 #include <AP_Common.h>
 #include <AP_Math.h>
@@ -58,6 +59,8 @@
 #include "OpticalFlow.h"
 //#include "RadioController.h"
 #include "RangeFinder_Lidar.h"
+#include "AltHold.h"
+#include "Serial.h"
 
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
@@ -110,6 +113,7 @@ RC_Channel rc_channels[] {
 // LIDAR Lite
 #if LIDAR == ENABLED
 RangeFinder * lidar = new RangeFinder_Lidar();
+AltHold altHold(lidar);
 
 // Lidar must be enabled (for altitude) to enable optical flow
 #if OPTFLOW == ENABLED
@@ -130,6 +134,8 @@ AC_AttitudeControl attitude(ahrs,
 		motors,
 		g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
         g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
+
+Serial serial(hal.uartB);
 
 int8_t flightMode;
 
@@ -302,9 +308,31 @@ void fast_loop() {
     // IMU DCM Algorithm
     ahrs.update();
 
+//#if DEBUG == ENABLED
+//    if (loop_count % 20 == 0) {
+//    	hal.console->printf("Roll: %4.4f\t(%ld)\t\t Pitch: %4.4f\t(%ld)\t\t Yaw: %4.4f\t(%ld)\n",
+//    			ahrs.roll,
+//				ahrs.roll_sensor,
+//				ahrs.pitch,
+//				ahrs.pitch_sensor,
+//				ahrs.yaw,
+//				ahrs.yaw_sensor);
+//    }
+//
+//#endif
+
+
     // Read in RC inputs
     rc_read();
 
+#if LIDAR == ENABLED
+    if (motors.armed()) {
+    	altHold.holdAltitute();
+    }
+#endif
+
+    // Read in from serial connection
+//    serial.read();
 
     //handle mode changes
 	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in <= rc_channels[RC_CHANNEL_THROTTLE].radio_min  + 75) {
@@ -384,11 +412,6 @@ void fast_loop() {
 #endif
 			}
 
-			// Make motors beep to let pilot know we are switching modes
-			motors.set_update_rate(RC_SLOW_SPEED);
-			hal.scheduler->delay(50);
-			motors.set_update_rate(RC_FAST_SPEED);
-			hal.scheduler->delay(50);
 		}
 		modeSelectTimer = 0;
 		lastMode = NO_MODE;
@@ -398,7 +421,7 @@ void fast_loop() {
 	// run low level rate controllers that only require IMU data
 	attitude.rate_controller_run();
 
-	// Send radio output (modified with stabilize control) to motors.
+	// Send radio output (modified with stabilize control or optflow control) to motors.
 	// This function only outputs a signal to the ESCs if the motors are armed AND enabled.
 	motors.output();
 
@@ -448,7 +471,7 @@ void slow_loop() {
 
 	// TODO - Check failsafes
 
-	cliCommands();
+//	cliCommands();
 }
 
 void rc_read() {
@@ -498,15 +521,17 @@ void rc_read() {
  * point.  This handles for any noise in the radio.
  */
 int16_t checkPwm(int16_t pwm, int32_t mid, int32_t deadzone){
-	if(pwm > mid + deadzone)
-	{
-		return pwm - deadzone;
-	}else if(pwm < mid - deadzone)
-	{
-		return pwm + deadzone;
-	}else{
-		return mid;
-	}
+
+	return pwm;
+//	if(pwm > mid + deadzone)
+//	{
+//		return pwm - deadzone;
+//	}else if(pwm < mid - deadzone)
+//	{
+//		return pwm + deadzone;
+//	}else{
+//		return mid;
+//	}
 }
 
 
@@ -541,6 +566,7 @@ void cliCommands() {
 			g.pitch_trim.set_and_save(rc_channels[RC_CHANNEL_PITCH].radio_in);
 			g.yaw_trim.set_and_save(rc_channels[RC_CHANNEL_YAW].radio_in);
 			g.throttle_trim.set_and_save(rc_channels[RC_CHANNEL_THROTTLE].radio_in);
+
 		}
 	}
 #endif

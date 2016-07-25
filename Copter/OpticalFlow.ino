@@ -90,10 +90,10 @@ int32_t OpticalFlow::get_of_roll(int32_t input_roll, int32_t input_yaw)
         last_of_roll_update = _optflow.last_update;
 
         // add new distance moved
-        tot_x_cm += _optflow.x_cm;
+        tot_x_cm += _optflow.x;
 
-        // only stop roll if caller isn't modifying roll AND yaw (accounting for RC jitter)
-        if (abs(input_roll) <= 200 && abs(input_yaw) <= 200 && lidar->getLastDistance() >= 500) {
+        // only correct if caller isn't modifying roll AND yaw (accounting for RC jitter)
+        if (abs(input_roll) <= 200 && abs(input_yaw) <= 200 && rangeFinder->getLastDistance() < 1500) {
         	p = pids_optflow[PID_OPTFLOW_ROLL].get_p(-tot_x_cm);
         	i = pids_optflow[PID_OPTFLOW_ROLL].get_i(-tot_x_cm, 1.0f);
         	d = pids_optflow[PID_OPTFLOW_ROLL].get_d(-tot_x_cm, 1.0f);
@@ -112,15 +112,6 @@ int32_t OpticalFlow::get_of_roll(int32_t input_roll, int32_t input_yaw)
 
         // limit amount of change and maximum angle
         of_roll = constrain_int32(new_roll, (of_roll-20), (of_roll+20));
-
-//        // log output if PID logging is on and we are tuning the rate P, I or D gains
-//        if( g.log_bitmask & MASK_LOG_PID && (g.radio_tuning == CH6_OPTFLOW_KP || g.radio_tuning == CH6_OPTFLOW_KI || g.radio_tuning == CH6_OPTFLOW_KD) ) {
-//            pid_log_counter++;              // Note: get_of_pitch pid logging relies on this function updating pid_log_counter so if you change the line above you must change the equivalent line in get_of_pitch
-//            if( pid_log_counter >= 5 ) {    // (update rate / desired output rate) = (100hz / 10hz) = 10
-//                pid_log_counter = 0;
-//                Log_Write_PID(CH6_OPTFLOW_KP, tot_x_cm, p, i, d, _of_roll, tuning_value);
-//            }
-//        }
 
     }
 
@@ -141,10 +132,10 @@ int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
         last_of_pitch_update = _optflow.last_update;
 
         // add new distance moved
-        tot_y_cm += _optflow.y_cm;
+        tot_y_cm += _optflow.y;
 
-        // only stop roll if caller isn't modifying pitch AND yaw (accounting for RC jitter)
-        if (abs(input_pitch) <= 200 && abs(input_yaw) <= 200 && lidar->getLastDistance() >= 500) {
+        // only correct if caller isn't modifying pitch AND yaw (accounting for RC jitter)
+        if (abs(input_pitch) <= 200 && abs(input_yaw) <= 200 && rangeFinder->getLastDistance() < 1500) {
         	p = pids_optflow[PID_OPTFLOW_PITCH].get_p(tot_y_cm);
         	i = pids_optflow[PID_OPTFLOW_PITCH].get_i(tot_y_cm, 1.0f);
         	d = pids_optflow[PID_OPTFLOW_PITCH].get_d(tot_y_cm, 1.0f);
@@ -165,12 +156,6 @@ int32_t OpticalFlow::get_of_pitch(int32_t input_pitch, int32_t input_yaw)
         // limit amount of change
         of_pitch = constrain_int32(new_pitch, (of_pitch-20), (of_pitch+20));
 
-//        // log output if PID logging is on and we are tuning the rate P, I or D gains
-//        if( g.log_bitmask & MASK_LOG_PID && (g.radio_tuning == CH6_OPTFLOW_KP || g.radio_tuning == CH6_OPTFLOW_KI || g.radio_tuning == CH6_OPTFLOW_KD) ) {
-//            if( pid_log_counter == 0 ) {        // relies on get_of_roll having updated the pid_log_counter
-//                Log_Write_PID(CH6_OPTFLOW_KP+100, tot_y_cm, p, i, d, of_pitch, tuning_value);
-//            }
-//        }
     }
 
     // limit max angle

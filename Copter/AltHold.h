@@ -54,17 +54,17 @@
 #define ALTHOLD_DEBUG 						DISABLED
 
 //vars for calculating the hover point
-#define ALTHOLD_CALC_HOVER_DELAY			100 //ms
+#define ALTHOLD_CALC_HOVER_DELAY			200 //ms
 #define ALTHOLD_CALC_HOVER_MAX_HEIGHT		100 //cm
 #define ALTHOLD_CALC_HOVER_HELD_TIME		2000 //ms
 #define ALTHOLD_CALC_HOVER_THRESHOLD		6
-#define ALTHOLD_CALC_HOVER_INCREMENT		5
-#define ALTHOLD_CALC_HOVER_TIMEOUT			10000
+#define ALTHOLD_CALC_HOVER_INCREMENT		8
+#define ALTHOLD_CALC_HOVER_TIMEOUT			30000
 #define ALTHOLD_CALC_HOVER_HEIGHT_TIMEOUT	200
 
 class AltHold{
 public:
-	AltHold();
+	AltHold(RangeFinder *rf);
 	PID getDistancePid();
 	PID getAccelerationPid();
 	PID getVelocityPid();
@@ -79,17 +79,20 @@ private:
 	int32_t _lastVelUpdateTime;
 	int32_t _lastDistance;
 
+	RangeFinder *_rangefinder;
+
 	float _velocity;
 	float _lastVelocityTarget;
 	float _distanceLeashLength;
 
 	//hover calc vars
+	int32_t _oldDistance;
 	int32_t _hoverPoint;
-	int32_t _lastHover;
 	int32_t _lastHoverUp;
 	int32_t _lastHoverDown;
 	bool _calculated;
 	bool _hasRisen;
+	bool _gotLastDistance;
 	uint32_t _heldTime;
 	uint32_t _lastHoverCalcTime;
 	int32_t _lastHoverDistance;

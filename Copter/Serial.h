@@ -14,20 +14,33 @@
 #define SERIAL_H_
 
 #include <AP_HAL.h>
-
+#include <UARTDriver.h>
+#include "limits.h"
+#include "errno.h"
 #include "Config.h"
+#include "stdio.h"
 
 class Serial {
 public:
-	void init();
-	long *getRC(char *str);
-	void write(const char *str, int16_t len);
+	Serial(AP_HAL::UARTDriver *driver);
+	void init(uint32_t baudRate);
+	void read();
+	void write(const char *str);
+	uint32_t lastReceiveTime();
 
 private:
-	bool checksum(const char *str, int16_t chksum);
 	void process(char *cmd);
+	bool checksumValid(char *str, char *chk);
 
-	long rc_channels[4];
+	AP_HAL::UARTDriver *_driver;
+
+	uint32_t _lastPktTime;
+
+	char _readBuf[512];
+	char _cmdBuf[512];
+	char _param[255];
+	char _value[255];
+//	char _chksum[255];
 
 };
 
