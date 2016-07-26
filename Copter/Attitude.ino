@@ -154,6 +154,10 @@ void ofLoiter_run()
 }
 #endif
 
+void altHoldRun() {
+
+}
+
 // get_pilot_desired_angle - transform pilot's roll or pitch input into a desired lean angle
 // returns desired angle in centi-degrees
 void get_pilot_desired_lean_angles(int16_t roll_in, int16_t pitch_in, int16_t &roll_out, int16_t &pitch_out)

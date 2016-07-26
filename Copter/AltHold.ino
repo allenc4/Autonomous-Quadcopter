@@ -20,6 +20,16 @@ AltHold::AltHold(RangeFinder *rf){
 	this->_lastHoverUp = this->_hoverPoint + ALTHOLD_CALC_HOVER_INCREMENT;
 	this->_gotLastDistance = false;
 
+	// Check if the hover point was previously calculated and saved to EEPROM
+	int32_t tHoverPoint = g.hover_point.get();
+	if (tHoverPoint == 0) {
+		// Default value of 0 saved to EEPROM, so we need to calculate the hover point
+		this->_hoverPointCalculated = false;
+	} else {
+		this->_hoverPointCalculated = true;
+		this->_hoverPoint = tHoverPoint;
+	}
+
 	this->_distancePid = new PID(
 			ALTHOLD_DISTANCE_P,
 			ALTHOLD_DISTANCE_I,
@@ -305,7 +315,7 @@ float AltHold::sqrt_controller(float error, float p, float second_ord_lim)
 }
 
 bool AltHold::_caluclateHoverPoint(){
-	if(!this->_calculated)
+	if(!this->_hoverPointCalculated)
 	{
 		if (!_gotLastDistance) {
 			_oldDistance = _rangefinder->getLastDistance();
@@ -394,9 +404,9 @@ bool AltHold::_caluclateHoverPoint(){
 				if(this->_heldTime >= ALTHOLD_CALC_HOVER_HELD_TIME)
 				{
 //					hal.console->print(" CALCULATED");
-					this->_calculated = true;
+					this->_hoverPointCalculated = true;
 					//TODO: write to eeprom
-//					g.hover_point.set_and_save(_hoverPoint);
+					g.hover_point.set_and_save(_hoverPoint);
 				}
 			}else if(!this->_hasRisen)
 			{
@@ -422,7 +432,7 @@ bool AltHold::_caluclateHoverPoint(){
 //		hal.console->println("");
 	}
 
-	return this->_calculated;
+	return this->_hoverPointCalculated;
 }
 #endif
 

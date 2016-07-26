@@ -90,7 +90,7 @@ private:
 	int32_t _hoverPoint;
 	int32_t _lastHoverUp;
 	int32_t _lastHoverDown;
-	bool _calculated;
+	bool _hoverPointCalculated;
 	bool _hasRisen;
 	bool _gotLastDistance;
 	uint32_t _heldTime;
