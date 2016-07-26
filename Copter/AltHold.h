@@ -27,20 +27,20 @@
 
 #define ALTHOLD_HEIGHT_THRESHOLD 			2
 
-#define ALTHOLD_DISTANCE_P 					1
-#define ALTHOLD_DISTANCE_I 					0
-#define ALTHOLD_DISTANCE_D 					0
-#define ALTHOLD_DISTANCE_IMAX 				0
+#define ALTHOLD_DISTANCE_P 					1 //1-3
+#define ALTHOLD_DISTANCE_I 					0 //not used
+#define ALTHOLD_DISTANCE_D 					0 //not used
+#define ALTHOLD_DISTANCE_IMAX 				0 //not used
 
-#define ALTHOLD_VELOCITY_P 					0.75
-#define ALTHOLD_VELOCITY_I 					1.5
-#define ALTHOLD_VELOCITY_D 					0
-#define ALTHOLD_VELOCITY_IMAX 				5
+#define ALTHOLD_VELOCITY_P 					4 //1-8
+#define ALTHOLD_VELOCITY_I 					0 //not used
+#define ALTHOLD_VELOCITY_D 					0 //not used
+#define ALTHOLD_VELOCITY_IMAX 				0 //not used
 
-#define ALTHOLD_ACCEL_P 					6
-#define ALTHOLD_ACCEL_I 					0
-#define ALTHOLD_ACCEL_D 					0
-#define ALTHOLD_ACCEL_IMAX 					0
+#define ALTHOLD_ACCEL_P 					1 //.5-1.5
+#define ALTHOLD_ACCEL_I 					0 //0-3
+#define ALTHOLD_ACCEL_D 					0 //0-0.4
+#define ALTHOLD_ACCEL_IMAX 					0 //0-1000
 
 // cm/s/s //really slow
 #define ALTHOLD_ACCELERATION_MAX 			250
@@ -49,7 +49,7 @@
 //The max change in distance we want from frame to frame
 #define ALTHOLD_MAX_DISTANCE_LEASH_LENGTH 	100 //1m
 
-#define ALTHOLD_VELOCITY_UPDATE_INTERVAL 		500 //ms
+#define ALTHOLD_VELOCITY_UPDATE_INTERVAL 		0 //ms
 
 #define ALTHOLD_DEBUG 						DISABLED
 
@@ -97,6 +97,10 @@ private:
 	uint32_t _lastHoverCalcTime;
 	int32_t _lastHoverDistance;
 	uint32_t _calcHoverBeginTime;
+
+	LowPassFilterFloat _vel_error_filter;
+	LowPassFilterFloat _accel_error_filter;
+
 
 	long _mapThrottle(long x, long in_min, long in_max, long out_min, long out_max);
 	void _updateCurrentVelocity();

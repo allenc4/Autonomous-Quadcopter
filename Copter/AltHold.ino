@@ -241,21 +241,22 @@ void AltHold::_updateAcceleration(float targetVelocity)
 	float accelFeedforward = 0;
 	this->_lastVelocityTarget = targetVelocity;
 
-	float velocityError = targetVelocity - this->_velocity;
+	float velocityError = _vel_error_filter.apply(targetVelocity - this->_velocity);
 
 	float p = this->_velocityPid->kP() * velocityError;
 
 	float targetAcceleration = accelFeedforward + p;
 
 	//contrain target acceleration
-	if(targetAcceleration > ALTHOLD_ACCELERATION_MAX)
-	{
-		targetAcceleration = ALTHOLD_ACCELERATION_MAX;
-	}
-	if(targetAcceleration < -ALTHOLD_ACCELERATION_MAX)
-	{
-		targetAcceleration = -ALTHOLD_ACCELERATION_MAX;
-	}
+//	if(targetAcceleration > ALTHOLD_ACCELERATION_MAX)
+//	{
+//		targetAcceleration = ALTHOLD_ACCELERATION_MAX;
+//	}
+//	if(targetAcceleration < -ALTHOLD_ACCELERATION_MAX)
+//	{
+//		targetAcceleration = -ALTHOLD_ACCELERATION_MAX;
+//	}
+	targetAcceleration = constrain_int32(targetAcceleration, -32000, 32000);
 
 	this->_updateThrottleOutput(targetAcceleration);
 }
@@ -267,7 +268,7 @@ void AltHold::_updateThrottleOutput(float targetAcceleration){
 
 	float acceleration = -(ahrs.get_accel_ef().z + GRAVITY_MSS) * 100.0f;
 
-	float accelerationError = targetAcceleration - acceleration;
+	float accelerationError = constrain_int32(_accel_error_filter.apply(targetAcceleration - acceleration), -32000, 32000);
 
 	float accelPidValue = this->_accelPid->get_pid(accelerationError);
 
