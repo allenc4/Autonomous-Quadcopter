@@ -105,11 +105,11 @@ void ofLoiter_run()
 		rc_channels[RC_CHANNEL_YAW].control_in);
 
    // get pilot's desired throttle
-  pilot_throttle_scaled = get_pilot_desired_throttle(
+   pilot_throttle_scaled = get_pilot_desired_throttle(
 		rc_channels[RC_CHANNEL_THROTTLE].control_in);
 
    // Check to see if we have landed (+/- 2 cm from the initial starting position)
-  bool landed = (lidar->getLastDistance() <= 2) && pilot_throttle_scaled < 100;
+   bool landed = (lidar->getLastDistance() <= 2) && pilot_throttle_scaled < 100;
 
     // when landed reset targets and output zero throttle
     if (landed) {
@@ -154,9 +154,51 @@ void ofLoiter_run()
 }
 #endif
 
-void altHoldRun() {
+#if LIDAR == ENABLED
+void altHold_run() {
+	int16_t target_roll, target_pitch;
+	float target_yaw_rate;
 
+	// if not armed or throttle at zero, set throttle to zero and exit immediately
+	if(!motors.armed() || rc_channels[RC_CHANNEL_THROTTLE].control_in <= 0) {
+		attitude.relax_bf_rate_controller();
+		attitude.set_yaw_target_to_current_heading();
+		attitude.set_throttle_out(0, false);
+		return;
+	}
+
+	// convert pilot input to lean angles
+	get_pilot_desired_lean_angles(rc_channels[RC_CHANNEL_ROLL].control_in,
+			rc_channels[RC_CHANNEL_PITCH].control_in,
+			target_roll,
+			target_pitch);
+
+
+	 // get pilot's desired yaw rate
+	target_yaw_rate = get_pilot_desired_yaw_rate(
+			rc_channels[RC_CHANNEL_YAW].control_in);
+
+
+	// Check to see if we have landed (+/- 2 cm from the initial starting position)
+    bool landed = (lidar->getLastDistance() <= 2) && rc_channels[RC_CHANNEL_THROTTLE].control_in < 100;
+
+	// when landed reset targets and output zero throttle
+	if (landed) {
+		attitude.relax_bf_rate_controller();
+		attitude.set_yaw_target_to_current_heading();
+		// move throttle to between minimum and non-takeoff-throttle to keep us on the ground
+		attitude.set_throttle_out(motors.throttle_min(), false);
+	} else {
+
+		// call attitude controller
+	    attitude.angle_ef_roll_pitch_rate_ef_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
+	    // body-frame rate controller is run directly from 100hz loop
+
+	    // call position controller (which internally calls set_throttle_out)
+	    altHold.holdAltitute();
+	}
 }
+#endif
 
 // get_pilot_desired_angle - transform pilot's roll or pitch input into a desired lean angle
 // returns desired angle in centi-degrees

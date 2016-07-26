@@ -289,7 +289,7 @@ void AltHold::_updateThrottleOutput(float targetAcceleration){
 
 	float throttleOut = (accelPidValue/1000.0f) + this->_hoverPoint;
 
-	rc_channels[RC_CHANNEL_THROTTLE].set_pwm(throttleOut);
+	attitude.set_throttle_out(throttleOut, true);
 
 //	hal.console->print(" Throttle Output: ");
 //	hal.console->print(throttleOut);
@@ -406,7 +406,11 @@ bool AltHold::_caluclateHoverPoint(){
 				{
 //					hal.console->print(" CALCULATED");
 					this->_hoverPointCalculated = true;
-					//TODO: write to eeprom
+
+					// Get the control in value and set that as the hover point
+					this->_hoverPoint = rc_channels[RC_CHANNEL_THROTTLE].control_in;
+
+					// Write to eeprom
 					g.hover_point.set_and_save(_hoverPoint);
 				}
 			}else if(!this->_hasRisen)

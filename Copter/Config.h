@@ -48,6 +48,7 @@
 
 #define FLIGHT_MODE_STABLE		0
 #define	FLIGHT_MODE_OPTSTABLE	1
+#define FLIGHT_MODE_ALTHOLD		2
 
 //////////////////////////////////////////////////////////////////////////////
 // HARDWARE CONFIGURATION AND CONNECTIONS

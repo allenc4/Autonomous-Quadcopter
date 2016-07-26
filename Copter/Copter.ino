@@ -116,9 +116,9 @@ RangeFinder * lidar = new RangeFinder_Lidar();
 AltHold altHold(lidar);
 
 // Lidar must be enabled (for altitude) to enable optical flow
-#if OPTFLOW == ENABLED
-OpticalFlow opticalFlow(lidar);
-#endif
+//#if OPTFLOW == ENABLED
+//OpticalFlow opticalFlow(lidar);
+//#endif
 #endif
 
 // Set up Motors instance to control all motors
@@ -388,18 +388,18 @@ void fast_loop() {
 			break;
 		case CHANGE_FLIGHT_MODE:
 			if (flightMode == FLIGHT_MODE_STABLE) {
-#if OPTFLOW == ENABLED
-				flightMode = FLIGHT_MODE_OPTSTABLE;
+#if LIDAR == ENABLED
+				flightMode = FLIGHT_MODE_ALTHOLD;
 				// Turn on the B and C LEDs
 				a_led->write(HAL_GPIO_LED_OFF);
 				b_led->write(HAL_GPIO_LED_ON);
 				c_led->write(HAL_GPIO_LED_ON);
 
 #if DEBUG == ENABLED
-				hal.console->println("Switching flight mode to optical flow stabilize");
+				hal.console->println("Switching flight mode to altitude hold stabilize");
 #endif
 #endif
-			} else if (flightMode == FLIGHT_MODE_OPTSTABLE) {
+			} else if (flightMode == FLIGHT_MODE_ALTHOLD) {
 				flightMode = FLIGHT_MODE_STABLE;
 
 				// Turn on the C LED only
@@ -436,9 +436,9 @@ void fast_loop() {
 //#endif
 
 	// run the attitude controllers
-#if OPTFLOW == ENABLED
-	if (flightMode == FLIGHT_MODE_OPTSTABLE) {
-		ofLoiter_run();
+#if LIDAR == ENABLED
+	if (flightMode == FLIGHT_MODE_ALTHOLD) {
+		altHold_run();
 	}
 #endif
 
