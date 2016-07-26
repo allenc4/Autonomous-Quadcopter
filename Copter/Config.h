@@ -18,6 +18,7 @@
 #define DEBUG			DISABLED
 #define ESC_CALIBRATE	DISABLED
 #define ACCEL_CALIBRATE DISABLED
+#define MOTORS_OFF		DISABLED //enabled wont output to motors
 
 // Enable lIDAR Lite range finder
 #define LIDAR			ENABLED

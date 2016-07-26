@@ -174,6 +174,9 @@ void setup()
 	//load parameters from eeprom
 	//not sure if this is necessary but it works
 	Parameters::load_parameters();
+#if DEBUG == ENABLED
+	AP_Param::show_all(hal.console);
+#endif
 
 	loop_count = 0;
 
@@ -325,12 +328,6 @@ void fast_loop() {
     // Read in RC inputs
     rc_read();
 
-#if LIDAR == ENABLED
-    if (motors.armed()) {
-    	altHold.holdAltitute();
-    }
-#endif
-
     // Read in from serial connection
 //    serial.read();
 
@@ -423,7 +420,10 @@ void fast_loop() {
 
 	// Send radio output (modified with stabilize control or optflow control) to motors.
 	// This function only outputs a signal to the ESCs if the motors are armed AND enabled.
+#if MOTORS_OFF == DISABLED
 	motors.output();
+#endif
+
 
 //#if DEBUG == ENABLED
 //	if (loop_count % 20 == 0) {

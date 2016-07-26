@@ -27,27 +27,27 @@
 
 #define ALTHOLD_HEIGHT_THRESHOLD 			2
 
-#define ALTHOLD_DISTANCE_P 					1 //1-3
+#define ALTHOLD_DISTANCE_P 					3 //1-3
 #define ALTHOLD_DISTANCE_I 					0 //not used
 #define ALTHOLD_DISTANCE_D 					0 //not used
 #define ALTHOLD_DISTANCE_IMAX 				0 //not used
 
-#define ALTHOLD_VELOCITY_P 					4 //1-8
+#define ALTHOLD_VELOCITY_P 					8 //1-8
 #define ALTHOLD_VELOCITY_I 					0 //not used
 #define ALTHOLD_VELOCITY_D 					0 //not used
 #define ALTHOLD_VELOCITY_IMAX 				0 //not used
 
-#define ALTHOLD_ACCEL_P 					1 //.5-1.5
+#define ALTHOLD_ACCEL_P 					1.5f //.5-1.5
 #define ALTHOLD_ACCEL_I 					0 //0-3
 #define ALTHOLD_ACCEL_D 					0 //0-0.4
 #define ALTHOLD_ACCEL_IMAX 					0 //0-1000
 
 // cm/s/s //really slow
-#define ALTHOLD_ACCELERATION_MAX 			250
+#define ALTHOLD_ACCELERATION_MAX 			10000
 // cm/s max velocity
-#define ALTHOLD_VELOCITY_MAX 				250
+#define ALTHOLD_VELOCITY_MAX 				10000
 //The max change in distance we want from frame to frame
-#define ALTHOLD_MAX_DISTANCE_LEASH_LENGTH 	100 //1m
+#define ALTHOLD_MAX_DISTANCE_LEASH_LENGTH 	10 //cm //1m
 
 #define ALTHOLD_VELOCITY_UPDATE_INTERVAL 		0 //ms
 
@@ -56,9 +56,9 @@
 //vars for calculating the hover point
 #define ALTHOLD_CALC_HOVER_DELAY			200 //ms
 #define ALTHOLD_CALC_HOVER_MAX_HEIGHT		100 //cm
-#define ALTHOLD_CALC_HOVER_HELD_TIME		2000 //ms
-#define ALTHOLD_CALC_HOVER_THRESHOLD		6
-#define ALTHOLD_CALC_HOVER_INCREMENT		8
+#define ALTHOLD_CALC_HOVER_HELD_TIME		3000 //ms
+#define ALTHOLD_CALC_HOVER_THRESHOLD		3
+#define ALTHOLD_CALC_HOVER_INCREMENT		10
 #define ALTHOLD_CALC_HOVER_TIMEOUT			30000
 #define ALTHOLD_CALC_HOVER_HEIGHT_TIMEOUT	200
 
@@ -97,6 +97,9 @@ private:
 	uint32_t _lastHoverCalcTime;
 	int32_t _lastHoverDistance;
 	uint32_t _calcHoverBeginTime;
+	bool _slowStart;
+	bool _slowStartThrottle;
+	int32_t _slowStartOffset;
 
 	LowPassFilterFloat _vel_error_filter;
 	LowPassFilterFloat _accel_error_filter;

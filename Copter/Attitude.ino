@@ -72,7 +72,7 @@ void stabilize_run()
     // body-frame rate controller is run directly from 100hz loop
 
     // output pilot's throttle
-    //attitude.set_throttle_out(pilot_throttle_scaled, true);
+    attitude.set_throttle_out(pilot_throttle_scaled, true);
 }
 
 /**
@@ -180,7 +180,7 @@ void altHold_run() {
 
 
 	// Check to see if we have landed (+/- 2 cm from the initial starting position)
-    bool landed = (lidar->getLastDistance() <= 2) && rc_channels[RC_CHANNEL_THROTTLE].control_in < 100;
+    bool landed = (lidar->getLastDistance() <= 2) && rc_channels[RC_CHANNEL_THROTTLE].control_in == 0;
 
 	// when landed reset targets and output zero throttle
 	if (landed) {
