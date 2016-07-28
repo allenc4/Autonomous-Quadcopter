@@ -122,7 +122,6 @@ RC_Channel rc_channels[] {
 // LIDAR Lite
 #if LIDAR == ENABLED
 RangeFinder * lidar = new RangeFinder_Lidar();
-AltHold altHold(lidar);
 
 // Lidar must be enabled (for altitude) to enable optical flow
 //#if OPTFLOW == ENABLED
@@ -145,6 +144,7 @@ AC_AttitudeControl attitude(ahrs,
 		g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
         g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
+#if LIDAR == ENABLED
 GPS_Glitch gps_glitch(gps);
 Baro_Glitch baro_glitch(barometer);
 AP_InertialNav inav(ahrs, barometer, gps_glitch, baro_glitch, *lidar);
@@ -159,6 +159,7 @@ AC_PID pid_rate_lon(0.1,0,0,0);
 AC_PosControl pos_control(ahrs, inav, motors, attitude,
         p_alt_pos, p_alt_rate, pid_alt_accel,
         p_pos_xy, pid_rate_lat, pid_rate_lon);
+#endif
 
 Serial serial(hal.uartB);
 
@@ -197,11 +198,6 @@ void setup()
 #if DEBUG == ENABLED
 	AP_Param::show_all(hal.console);
 #endif
-	hal.scheduler->delay(50);
-	hal.console->print("Loading Hover Point...");
-	hal.scheduler->delay(50);
-	altHold.loadHoverPoint();
-	hal.console->println("Done");
 
 	loop_count = 0;
 
@@ -332,7 +328,6 @@ void fast_loop() {
 	uint32_t timer = hal.scheduler->micros();
 
     G_Dt = (float)(timer - fastLoopTimer) / 1000000.f;
-    pos_control.set_dt(G_Dt);
 
     fastLoopTimer = timer;
 
@@ -343,6 +338,10 @@ void fast_loop() {
 #if LIDAR == ENABLED
 	lidar->update();
 
+	//needs lidar and is used for althold
+	pos_control.set_dt(G_Dt);
+	inav.update(G_Dt);
+
 	// Test and display LIDAR values
 //	lidarTest();
 
@@ -351,12 +350,6 @@ void fast_loop() {
 //	opticalFlow.debug_print();
 
 #endif
-#endif
-
-    inav.update(G_Dt);
-
-#if LIDAR == ENABLED
-   inav.set_altitude((float)lidar->getLastDistance());
 #endif
 
 //#if DEBUG == ENABLED
@@ -502,7 +495,7 @@ void fast_loop() {
 			stabilize_run();
 		}
 	}else{
-		rc_channels[RC_CHANNEL_THROTTLE].control_in = 0;
+
 	}
 }
 

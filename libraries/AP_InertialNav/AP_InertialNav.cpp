@@ -46,7 +46,6 @@ void AP_InertialNav::update(float dt)
 
     // check if new baro readings have arrived and use them to correct vertical accelerometer offsets.
 //    check_baro();
-
     check_lidar();
 
     // check if new gps readings have arrived and use them to correct position estimates
