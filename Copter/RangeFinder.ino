@@ -5,7 +5,6 @@ RangeFinder::RangeFinder() {
 	distCM = 0;
 	timeLastUpdate = 0;
 }
-
 /**
  * Checks the current system time versus the last update time of the sensor read.
  * If the last update time is more than the predefined allocated timeout time (LIDAR_READ_TIMEOUT_MS),
@@ -28,6 +27,6 @@ bool RangeFinder::isHealthy() {
 /**
  * Gets the last known value read from the LIDAR
  */
-uint16_t RangeFinder::getLastDistance() {
+uint16_t RangeFinder::getLastDistance(){
 	return distCM;
 }

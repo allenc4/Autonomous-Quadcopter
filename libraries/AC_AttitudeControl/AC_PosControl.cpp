@@ -23,7 +23,7 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] PROGMEM = {
 AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
                              const AP_Motors& motors, AC_AttitudeControl& attitude_control,
                              AC_P& p_alt_pos, AC_P& p_alt_rate, AC_PID& pid_alt_accel,
-                             AC_P& p_pos_xy, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon) :
+                             AC_P& p_pos_xy, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon, RangeFinder * lidar) :
     _ahrs(ahrs),
     _inav(inav),
     _motors(motors),
@@ -52,9 +52,13 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
     _distance_to_target(0.0f),
     _xy_step(0),
     _dt_xy(0.0f),
-    _vel_xyz_step(0)
+    _vel_xyz_step(0),
+	_lidar(lidar)
 {
     AP_Param::setup_object_defaults(this, var_info);
+
+    //this is just the hardcoded value that the quad calculated
+    _throttle_hover = 495;
 
     // initialise flags
     _flags.force_recalc_xy = false;
@@ -131,8 +135,8 @@ void AC_PosControl::set_alt_target_with_slew(float alt_cm, float dt)
     }
 
     // do not let target get too far from current altitude
-    float curr_alt = _inav.get_altitude();
-    _pos_target.z = constrain_float(_pos_target.z,curr_alt-_leash_down_z,curr_alt+_leash_up_z);
+    float curr_alt = (float)_lidar->getLastDistance();
+    _pos_target.z = constrain_float(alt_cm,curr_alt-_leash_down_z,curr_alt+_leash_up_z);
 }
 
 /// set_alt_target_from_climb_rate - adjusts target up or down using a climb rate in cm/s
@@ -157,9 +161,9 @@ void AC_PosControl::set_alt_target_from_climb_rate(float climb_rate_cms, float d
 }
 
 // get_alt_error - returns altitude error in cm
-float AC_PosControl::get_alt_error() const
+float AC_PosControl::get_alt_error()
 {
-    return (_pos_target.z - _inav.get_altitude());
+    return (_pos_target.z - (float)_lidar->getLastDistance());
 }
 
 /// set_target_to_stopping_point_z - returns reasonable stopping altitude in cm above home
@@ -172,9 +176,9 @@ void AC_PosControl::set_target_to_stopping_point_z()
 }
 
 /// get_stopping_point_z - sets stopping_point.z to a reasonable stopping altitude in cm above home
-void AC_PosControl::get_stopping_point_z(Vector3f& stopping_point) const
+void AC_PosControl::get_stopping_point_z(Vector3f& stopping_point)
 {
-    const float curr_pos_z = _inav.get_altitude();
+    float curr_pos_z = (float)_lidar->getLastDistance();
     float curr_vel_z = _inav.get_velocity_z();
 
     float linear_distance;  // half the distance we swap between linear and sqrt and the distance we offset sqrt
@@ -205,9 +209,7 @@ void AC_PosControl::get_stopping_point_z(Vector3f& stopping_point) const
 /// init_takeoff - initialises target altitude if we are taking off
 void AC_PosControl::init_takeoff()
 {
-    const Vector3f& curr_pos = _inav.get_position();
-
-    _pos_target.z = curr_pos.z + POSCONTROL_TAKEOFF_JUMP_CM;
+    _pos_target.z = (float)_lidar->getLastDistance() + POSCONTROL_TAKEOFF_JUMP_CM;
 
     // freeze feedforward to avoid jump
     freeze_ff_z();
@@ -256,7 +258,7 @@ void AC_PosControl::calc_leash_length_z()
 // vel_up_max, vel_down_max should have already been set before calling this method
 void AC_PosControl::pos_to_rate_z()
 {
-    float curr_alt = _inav.get_altitude();
+    float curr_alt = _lidar->getLastDistance();
     float linear_distance;  // half the distance we swap between linear and sqrt and the distance we offset sqrt.
 
     // clear position limit flags
@@ -265,6 +267,15 @@ void AC_PosControl::pos_to_rate_z()
 
     // calculate altitude error
     _pos_error.z = _pos_target.z - curr_alt;
+
+#if DEBUG == ENABLED
+    hal.console->print("Distance Target: ");
+    hal.console->print(_pos_target.z);
+    hal.console->print("\tDistance Current: ");
+    hal.console->print(curr_alt);
+    hal.console->print("\tDistance Error: ");
+    hal.console->print(_pos_error.z);
+#endif
 
     // do not let target altitude get too far from current altitude
     if (_pos_error.z > _leash_up_z) {
@@ -401,6 +412,12 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
     // To-Do: we had a contraint here but it's now removed, is this ok?  with the motors library handle it ok?
     _attitude_control.set_throttle_out((int16_t)p+i+d+_throttle_hover, true);
     
+#if DEBUG == ENABLED
+    hal.console->print(" Throttle OutPut: ");
+    hal.console->print(p+i+d+_throttle_hover);
+    hal.console->println();
+#endif
+
     // to-do add back in PID logging?
 }
 

@@ -11,6 +11,7 @@
 #include <AC_AttitudeControl.h> // Attitude control library
 #include <AP_Motors.h>          // motors library
 #include <AP_Vehicle.h>         // common vehicle parameters
+#include <RangeFinder.h>
 
 
 // position controller default definitions
@@ -51,7 +52,7 @@ public:
     AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
                   const AP_Motors& motors, AC_AttitudeControl& attitude_control,
                   AC_P& p_alt_pos, AC_P& p_alt_rate, AC_PID& pid_alt_accel,
-                  AC_P& p_pos_xy, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon);
+                  AC_P& p_pos_xy, AC_PID& pid_rate_lat, AC_PID& pid_rate_lon, RangeFinder *lidar);
 
     ///
     /// initialisation functions
@@ -120,13 +121,13 @@ public:
     float get_alt_target() const { return _pos_target.z; }
 
     /// get_alt_error - returns altitude error in cm
-    float get_alt_error() const;
+    float get_alt_error();
 
     /// set_target_to_stopping_point_z - sets altitude target to reasonable stopping altitude in cm above home
     void set_target_to_stopping_point_z();
 
     /// get_stopping_point_z - sets stopping_point.z to a reasonable stopping altitude in cm above home
-    void get_stopping_point_z(Vector3f& stopping_point) const;
+    void get_stopping_point_z(Vector3f& stopping_point);
 
     /// init_takeoff - initialises target altitude if we are taking off
     void init_takeoff();
@@ -327,6 +328,7 @@ private:
     const AP_InertialNav&       _inav;
     const AP_Motors&            _motors;
     AC_AttitudeControl&         _attitude_control;
+    RangeFinder	* _lidar;
 
     // references to pid controllers and motors
     AC_P&       _p_alt_pos;

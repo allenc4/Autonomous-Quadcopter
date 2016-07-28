@@ -42,6 +42,8 @@
 
 #include <AP_Curve.h>
 #include <AC_AttitudeControl.h>
+#include <AP_InertialNav.h>
+#include <AC_PosControl.h>
 #include <APM_PI.h>
 #include <AC_PID.h>
 #include <PID.h>
@@ -65,6 +67,11 @@
 // ArduPilot Hardware Abstraction Layer (HAL)
 const AP_HAL::HAL& hal = AP_HAL_BOARD_DRIVER;
 AP_Vehicle::MultiCopter vechicleType;
+
+// LEDs
+AP_HAL::DigitalSource *a_led;
+AP_HAL::DigitalSource *b_led;
+AP_HAL::DigitalSource *c_led;
 
 extern const AP_Param::Info var_info[];
 AP_Param param_loader(var_info);
@@ -91,6 +98,8 @@ static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::spi);
 #else
  #error Unrecognized CONFIG_BARO setting
 #endif
+
+float target_lidar_alt;
 
 // Compass used for orientation
 AP_Compass_HMC5843 compass;
@@ -129,11 +138,27 @@ AP_MotorsQuad motors(rc_channels[RC_CHANNEL_ROLL],
 		rc_channels[RC_CHANNEL_YAW]);
 
 AP_AHRS_DCM ahrs(ins, barometer, gps);
+
 AC_AttitudeControl attitude(ahrs,
 		vechicleType,
 		motors,
 		g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
         g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
+
+GPS_Glitch gps_glitch(gps);
+Baro_Glitch baro_glitch(barometer);
+AP_InertialNav inav(ahrs, barometer, gps_glitch, baro_glitch);
+
+AC_P p_alt_pos(1);
+AC_P p_alt_rate(1);
+AC_PID pid_alt_accel(0.5,0,0,0);
+AC_P p_pos_xy(0.5);
+AC_PID pid_rate_lat(0.1,0,0,0);
+AC_PID pid_rate_lon(0.1,0,0,0);
+
+AC_PosControl pos_control(ahrs, inav, motors, attitude,
+        p_alt_pos, p_alt_rate, pid_alt_accel,
+        p_pos_xy, pid_rate_lat, pid_rate_lon, lidar);
 
 Serial serial(hal.uartB);
 
@@ -143,11 +168,6 @@ int8_t flightMode;
 int32_t of_roll;
 // The Commanded PITCH based on optical flow sensor. Negative pitch means go forward.
 int32_t of_pitch;
-
-// LEDs
-AP_HAL::DigitalSource *a_led;
-AP_HAL::DigitalSource *b_led;
-AP_HAL::DigitalSource *c_led;
 
 // For debugging and printing to console
 uint32_t loop_count;
@@ -177,6 +197,11 @@ void setup()
 #if DEBUG == ENABLED
 	AP_Param::show_all(hal.console);
 #endif
+	hal.scheduler->delay(50);
+	hal.console->print("Loading Hover Point...");
+	hal.scheduler->delay(50);
+	altHold.loadHoverPoint();
+	hal.console->println("Done");
 
 	loop_count = 0;
 
@@ -311,6 +336,26 @@ void fast_loop() {
     // IMU DCM Algorithm
     ahrs.update();
 
+	// Update readings from LIDAR and Optical Flow sensors
+#if LIDAR == ENABLED
+	lidar->update();
+
+	// Test and display LIDAR values
+//	lidarTest();
+
+#if OPTFLOW == ENABLED
+	opticalFlow.update();
+//	opticalFlow.debug_print();
+
+#endif
+#endif
+
+    inav.update(G_Dt);
+
+#if LIDAR == ENABLED
+   inav.set_altitude((float)lidar->getLastDistance());
+#endif
+
 //#if DEBUG == ENABLED
 //    if (loop_count % 20 == 0) {
 //    	hal.console->printf("Roll: %4.4f\t(%ld)\t\t Pitch: %4.4f\t(%ld)\t\t Yaw: %4.4f\t(%ld)\n",
@@ -395,6 +440,12 @@ void fast_loop() {
 #if DEBUG == ENABLED
 				hal.console->println("Switching flight mode to altitude hold stabilize");
 #endif
+				//init the althold parameters
+				float max_z_vel = 250;
+				float max_z_accel = 250;
+				pos_control.set_speed_z(-250, 250);
+				pos_control.set_accel_z(250);
+				pos_control.set_target_to_stopping_point_z();
 #endif
 			} else if (flightMode == FLIGHT_MODE_ALTHOLD) {
 				flightMode = FLIGHT_MODE_STABLE;
@@ -420,7 +471,7 @@ void fast_loop() {
 
 	// Send radio output (modified with stabilize control or optflow control) to motors.
 	// This function only outputs a signal to the ESCs if the motors are armed AND enabled.
-#if MOTORS_OFF == DISABLED
+#if MOTOR_OUTPUT == ENABLED
 	motors.output();
 #endif
 
@@ -435,31 +486,21 @@ void fast_loop() {
 //	}
 //#endif
 
+	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in > RC_THROTTLE_MIN + 75)
+	{
 	// run the attitude controllers
 #if LIDAR == ENABLED
-	if (flightMode == FLIGHT_MODE_ALTHOLD) {
-		altHold_run();
+		if (flightMode == FLIGHT_MODE_ALTHOLD) {
+			altHold_run();
+		}
+#endif
+
+		if (flightMode == FLIGHT_MODE_STABLE) {
+			stabilize_run();
+		}
+	}else{
+		rc_channels[RC_CHANNEL_THROTTLE].control_in = 0;
 	}
-#endif
-
-	if (flightMode == FLIGHT_MODE_STABLE) {
-		stabilize_run();
-	}
-
-	// Update readings from LIDAR and Optical Flow sensors
-#if LIDAR == ENABLED
-	lidar->update();
-
-	// Test and display LIDAR values
-//	lidarTest();
-
-#if OPTFLOW == ENABLED
-	opticalFlow.update();
-//	opticalFlow.debug_print();
-
-#endif
-#endif
-
 }
 
 void medium_loop() {
@@ -470,8 +511,9 @@ void medium_loop() {
 void slow_loop() {
 
 	// TODO - Check failsafes
-
-//	cliCommands();
+#if CLI_COMMANDS == ENABLED
+	cliCommands();
+#endif
 }
 
 void rc_read() {
@@ -550,9 +592,8 @@ long map(long x, long in_min, long in_max, long out_min, long out_max)
  * Runs various command line functions based on user input (if any). Relies on DEBUG value being enabled.
  * Should not be called if DEBUG is DISABLED (ie. we are flying)...
  */
+#if CLI_COMMANDS == ENABLED
 void cliCommands() {
-
-#if DEBUG == ENABLED
 	// Check if user wants to trim values
 	if (hal.console->available()) {
 		if (hal.console->read() == 't') {
@@ -569,8 +610,7 @@ void cliCommands() {
 
 		}
 	}
-#endif
-
 }
+#endif
 
 AP_HAL_MAIN();  // special macro that replace's one of Arduino's to setup the code (e.g. ensure loop() is called in a loop).

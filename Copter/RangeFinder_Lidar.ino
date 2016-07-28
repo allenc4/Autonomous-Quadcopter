@@ -76,6 +76,28 @@ bool RangeFinder_Lidar::update() {
 		distCM -= _starting_distance_offset;
 	}
 
+	//correct for quad tilt
+
+	 //downward facing vector with no rotation
+	Vector3f original(0,0,-1);
+
+	//rotate the orignal vector using the sensors DCM matrix
+	//not sure if this is the body or global dcm matrix havent checked
+	//should be the body tho
+	Vector3f rotated = ahrs.get_dcm_matrix() * original;
+
+	//this gives us the cos of the angle between the two vectors
+	float cosTheta = (original * rotated)/(original.length() * rotated.length());
+	float angle = acos(cosTheta);
+
+	//using sin rule
+	//a/sin(A) = b/sin(B)
+	//a/sin(90) = b/sin(angle)
+	//sin(90) = 1
+	//a = b/sin(angle)
+	//b = a*sin(angle)
+	distCM *= sin(angle);
+
 	i2c_sem->give();
 	numReadFails = 0;  // Reset numReadFails since we only count consecutive failures
 

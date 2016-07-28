@@ -158,12 +158,14 @@ void ofLoiter_run()
 void altHold_run() {
 	int16_t target_roll, target_pitch;
 	float target_yaw_rate;
+	int16_t target_climb_rate;
 
 	// if not armed or throttle at zero, set throttle to zero and exit immediately
 	if(!motors.armed() || rc_channels[RC_CHANNEL_THROTTLE].control_in <= 0) {
 		attitude.relax_bf_rate_controller();
 		attitude.set_yaw_target_to_current_heading();
 		attitude.set_throttle_out(0, false);
+		pos_control.set_alt_target_to_current_alt();
 		return;
 	}
 
@@ -178,9 +180,17 @@ void altHold_run() {
 	target_yaw_rate = get_pilot_desired_yaw_rate(
 			rc_channels[RC_CHANNEL_YAW].control_in);
 
+	target_climb_rate = get_pilot_desired_climb_rate(rc_channels[RC_CHANNEL_THROTTLE].control_in);
+
 
 	// Check to see if we have landed (+/- 2 cm from the initial starting position)
     bool landed = (lidar->getLastDistance() <= 2) && rc_channels[RC_CHANNEL_THROTTLE].control_in == 0;
+
+    if(landed && target_climb_rate > 0)
+    {
+    	landed = false;
+    	set_throttle_takeoff();
+    }
 
 	// when landed reset targets and output zero throttle
 	if (landed) {
@@ -188,14 +198,22 @@ void altHold_run() {
 		attitude.set_yaw_target_to_current_heading();
 		// move throttle to between minimum and non-takeoff-throttle to keep us on the ground
 		attitude.set_throttle_out(motors.throttle_min(), false);
+		pos_control.set_alt_target_to_current_alt();
 	} else {
 
 		// call attitude controller
 	    attitude.angle_ef_roll_pitch_rate_ef_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
 	    // body-frame rate controller is run directly from 100hz loop
 
+	    target_climb_rate = get_throttle_surface_tracking(target_climb_rate, pos_control.get_alt_target(), G_Dt);
+	   // pos_control.set_alt_target_from_climb_rate(target_climb_rate, G_Dt);
+
+	    //sets target alt to a distance
+	    float target_alt_cm = map(rc_channels[RC_CHANNEL_THROTTLE].radio_in, RC_THROTTLE_MIN, RC_THROTTLE_MAX, 10, 150);
+	    pos_control.set_alt_target_with_slew(target_alt_cm, G_Dt);
+
 	    // call position controller (which internally calls set_throttle_out)
-	    altHold.holdAltitute();
+	    pos_control.update_z_controller();
 	}
 }
 #endif
@@ -267,4 +285,71 @@ int16_t get_pilot_desired_throttle(int16_t throttle_control)
     }
 
     return throttle_out;
+}
+
+// get_pilot_desired_climb_rate - transform pilot's throttle input to
+// climb rate in cm/s.  we use radio_in instead of control_in to get the full range
+// without any deadzone at the bottom
+#define THROTTLE_IN_DEADBAND_TOP (THROTTLE_IN_MIDDLE+25)  // top of the deadband
+#define THROTTLE_IN_DEADBAND_BOTTOM (THROTTLE_IN_MIDDLE-25)  // bottom of the deadband
+int16_t get_pilot_desired_climb_rate(int16_t throttle_control)
+{
+    int16_t desired_rate = 0;
+
+    // ensure a reasonable throttle value
+    throttle_control = constrain_int16(throttle_control,0,1000);
+
+    // ensure a reasonable deadzone
+    int32_t throttle_deadzone = 25;
+    int32_t pilot_velocity_z_max = 250;
+
+    // check throttle is above, below or in the deadband
+    if (throttle_control < THROTTLE_IN_DEADBAND_BOTTOM) {
+        // below the deadband
+        desired_rate = (int32_t) pilot_velocity_z_max * (throttle_control-THROTTLE_IN_DEADBAND_BOTTOM) / (THROTTLE_IN_MIDDLE - throttle_deadzone);
+    }else if (throttle_control > THROTTLE_IN_DEADBAND_TOP) {
+        // above the deadband
+        desired_rate = (int32_t)pilot_velocity_z_max * (throttle_control-THROTTLE_IN_DEADBAND_TOP) / (THROTTLE_IN_MIDDLE - throttle_deadzone);
+    }else{
+        // must be in the deadband
+        desired_rate = 0;
+    }
+
+    return desired_rate;
+}
+
+// get_throttle_surface_tracking - hold copter at the desired distance above the ground
+//      returns climb rate (in cm/s) which should be passed to the position controller
+float get_throttle_surface_tracking(int16_t target_rate, float current_alt_target, float dt)
+{
+    static uint32_t last_call_ms = 0;
+    float distance_error;
+    float velocity_correction;
+
+
+    // adjust sonar target alt if motors have not hit their limits
+    if ((target_rate<0 && !motors.limit.throttle_lower) || (target_rate>0 && !motors.limit.throttle_upper)) {
+        target_lidar_alt += target_rate * dt;
+    }
+
+    // do not let target altitude get too far from current altitude above ground
+    // Note: the 750cm limit is perhaps too wide but is consistent with the regular althold limits and helps ensure a smooth transition
+    target_lidar_alt = constrain_float(target_lidar_alt,(float)lidar->getLastDistance()-altHold.getZLeashLength(),(float)lidar->getLastDistance()-altHold.getZLeashLength());
+
+    // calc desired velocity correction from target sonar alt vs actual sonar alt (remove the error already passed to Altitude controller to avoid oscillations)
+    distance_error = (target_lidar_alt - lidar->getLastDistance());
+    velocity_correction = distance_error * 0.8;
+    velocity_correction = constrain_float(velocity_correction, -150, 150);
+
+    // return combined pilot climb rate + rate to correct sonar alt error
+    return (target_rate + velocity_correction);
+}
+
+void set_throttle_takeoff()
+{
+   // tell position controller to reset alt target and reset I terms
+   pos_control.init_takeoff();
+
+   // tell motors to do a slow start
+   motors.slow_start(true);
 }

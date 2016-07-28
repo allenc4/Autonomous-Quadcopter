@@ -55,7 +55,7 @@
 
 //vars for calculating the hover point
 #define ALTHOLD_CALC_HOVER_DELAY			200 //ms
-#define ALTHOLD_CALC_HOVER_MAX_HEIGHT		100 //cm
+#define ALTHOLD_CALC_HOVER_MAX_HEIGHT		75 //cm
 #define ALTHOLD_CALC_HOVER_HELD_TIME		3000 //ms
 #define ALTHOLD_CALC_HOVER_THRESHOLD		3
 #define ALTHOLD_CALC_HOVER_INCREMENT		10
@@ -69,6 +69,10 @@ public:
 	PID getAccelerationPid();
 	PID getVelocityPid();
 	void holdAltitute();
+	void loadHoverPoint();
+	float getZLeashLength();
+	float get_velocity();
+	static float getAltEstimate();
 private:
 	PID * _distancePid;
 	PID * _accelPid;
@@ -100,6 +104,7 @@ private:
 	bool _slowStart;
 	bool _slowStartThrottle;
 	int32_t _slowStartOffset;
+	bool _calcHoverToHigh;
 
 	LowPassFilterFloat _vel_error_filter;
 	LowPassFilterFloat _accel_error_filter;

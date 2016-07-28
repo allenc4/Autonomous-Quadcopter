@@ -20,16 +20,6 @@ AltHold::AltHold(RangeFinder *rf){
 	this->_lastHoverUp = this->_hoverPoint + ALTHOLD_CALC_HOVER_INCREMENT;
 	this->_gotLastDistance = false;
 
-	// Check if the hover point was previously calculated and saved to EEPROM
-	int32_t tHoverPoint = 0; //g.hover_point.get();
-	if (tHoverPoint == 0) {
-		// Default value of 0 saved to EEPROM, so we need to calculate the hover point
-		this->_hoverPointCalculated = false;
-	} else {
-		this->_hoverPointCalculated = true;
-		this->_hoverPoint = tHoverPoint;
-	}
-
 	this->_slowStartThrottle = this->_hoverPoint/2;
 	this->_slowStart = false;
 	this->_slowStartOffset = 0;
@@ -75,6 +65,27 @@ AltHold::AltHold(RangeFinder *rf){
 	}
 }
 
+void AltHold::loadHoverPoint(){
+	// Check if the hover point was previously calculated and saved to EEPROM
+	hal.console->println("1");
+	hal.scheduler->delay(50);
+	int32_t tHoverPoint = g.hover_point.get();
+	hal.console->println("2");
+	hal.scheduler->delay(50);
+	if (tHoverPoint == 0) {
+		// Default value of 0 saved to EEPROM, so we need to calculate the hover point
+		hal.console->println("3");
+			hal.scheduler->delay(50);
+		b_led->mode(HAL_GPIO_LED_ON);
+		this->_hoverPointCalculated = false;
+	} else {
+		hal.console->println("4");
+			hal.scheduler->delay(50);
+		this->_hoverPointCalculated = true;
+		this->_hoverPoint = tHoverPoint;
+	}
+}
+
 PID AltHold::getDistancePid(){
 	return *(this->_distancePid);
 }
@@ -104,12 +115,22 @@ void AltHold::holdAltitute(){
 	if(currentThrottle <= RC_THROTTLE_MIN+75) //this is the current min_throttle_offset variable should be changed to a var not harcoded
 	{
 		hal.console->println("Need throttle to move");
+		this->_slowStartOffset = 0;
+		if(!this->_hoverPointCalculated)
+		{
+			this->_hoverPoint = 400;
+			this->_heldTime = 0;
+		}
 		this->_lastState = ALTHOLD_STOPPED;
 		return;
 	}
 
 	if(!this->_caluclateHoverPoint())
 	{
+		if(loop_count % 20 == 0)
+		{
+			b_led->toggle();
+		}
 		return;
 	}
 
@@ -124,45 +145,45 @@ void AltHold::holdAltitute(){
 	//if we were taking off and haven't gotten to the proper height yet keep taking off
 	if(this->_lastState == ALTHOLD_TAKEOFF && currentDistance < ALTHOLD_HEIGHT_TAKEOFF)
 	{
-#if DEBUG == ENABLED
-		hal.console->println("Taking Off");
+#if ALTHOLD_DEBUG == ENABLED
+		hal.console->print("Taking Off\t");
 #endif
 		currentState = ALTHOLD_TAKEOFF;
 	}
 	//if we were stopped and there is throttle input take off
 	else if(this->_lastState == ALTHOLD_STOPPED && currentThrottle >= ALTHOLD_HEIGHT_MIN)
 	{
-#if DEBUG == ENABLED
-		hal.console->println("Starting take off");
+#if ALTHOLD_DEBUG == ENABLED
+		hal.console->print("Starting take off\t");
 #endif
 		currentState = ALTHOLD_TAKEOFF;
 	}
 	//if we were holding and throttle input goes below the landing height land
 	else if(this->_lastState == ALTHOLD_HOLDING && currentDistance <= ALTHOLD_HEIGHT_LAND + ALTHOLD_HEIGHT_THRESHOLD)
 	{
-#if DEBUG == ENABLED
-		hal.console->print("Starting land ");
+#if ALTHOLD_DEBUG == ENABLED
+		hal.console->print("Starting land\t");
 #endif
 		currentState = ALTHOLD_LANDING;
 	}
 	else if(this->_lastState == ALTHOLD_LANDING && currentDistance > ALTHOLD_HEIGHT_MIN - ALTHOLD_HEIGHT_THRESHOLD)
 	{
-#if DEBUG == ENABLED
-		hal.console->print("Landing ");
+#if ALTHOLD_DEBUG == ENABLED
+		hal.console->print("Landing\t");
 #endif
 		currentState = ALTHOLD_LANDING;
 	}
 	//if we are taking off and we reach the take off height then we hold
 	else if((this->_lastState == ALTHOLD_TAKEOFF || this->_lastState == ALTHOLD_HOLDING) && currentDistance >= ALTHOLD_HEIGHT_TAKEOFF - ALTHOLD_HEIGHT_THRESHOLD )
 	{
-#if DEBUG == ENABLED
-		hal.console->print("Holding ");
+#if ALTHOLD_DEBUG == ENABLED
+		hal.console->print("Holding\t");
 #endif
 		currentState = ALTHOLD_HOLDING;
 	}
 	else{
-#if DEBUG == ENABLED
-		hal.console->print("Stopping ");
+#if ALTHOLD_DEBUG == ENABLED
+		hal.console->print("Stopping\t");
 #endif
 		currentState = ALTHOLD_STOPPED;
 	}
@@ -223,21 +244,21 @@ void AltHold::_updateVelocity(uint32_t targetDistance){
 	{
 		targetDistance = 50;
 	}
-#if DEBUG == ENABLED
-	hal.console->print(" Target Distance: ");
+#if ALTHOLD_DEBUG == ENABLED
+	hal.console->print("\tTarget Distance:\t");
 	hal.console->print(targetDistance);
 #endif
 	uint32_t currentDistance = _rangefinder->getLastDistance();
 
-#if DEBUG == ENABLED
-	hal.console->print(" Current Distance: ");
+#if ALTHOLD_DEBUG == ENABLED
+	hal.console->print("\tCurrent Distance:\t");
 	hal.console->print(currentDistance);
 #endif
 
 	float distanceError = (float)targetDistance - (float)currentDistance;
 
-#if DEBUG == ENABLED
-	hal.console->print(" Distance Error: ");
+#if ALTHOLD_DEBUG == ENABLED
+	hal.console->print("\tDistance Error:\t");
 	hal.console->print(distanceError);
 #endif
 
@@ -271,8 +292,8 @@ void AltHold::_updateVelocity(uint32_t targetDistance){
 void AltHold::_updateAcceleration(float targetVelocity)
 {
 
-#if DEBUG == ENABLED
-	hal.console->print(" Target Velocity: ");
+#if ALTHOLD_DEBUG == ENABLED
+	hal.console->print("\tTarget Velocity:\t");
 	hal.console->print(targetVelocity);
 #endif
 
@@ -281,23 +302,22 @@ void AltHold::_updateAcceleration(float targetVelocity)
 	float accelFeedforward = 0;
 	this->_lastVelocityTarget = targetVelocity;
 
-//	float velocityError = _vel_error_filter.apply(targetVelocity - this->_velocity);
-
-	float velocityError = targetVelocity - this->_velocity;
+	float velocityError = _vel_error_filter.apply(targetVelocity - this->_velocity);
+//	float velocityError = targetVelocity - this->_velocity;
 
 	float p = this->_velocityPid->kP() * velocityError;
 
 	float targetAcceleration = accelFeedforward + p;
 
 	//contrain target acceleration
-//	if(targetAcceleration > ALTHOLD_ACCELERATION_MAX)
-//	{
-//		targetAcceleration = ALTHOLD_ACCELERATION_MAX;
-//	}
-//	if(targetAcceleration < -ALTHOLD_ACCELERATION_MAX)
-//	{
-//		targetAcceleration = -ALTHOLD_ACCELERATION_MAX;
-//	}
+	if(targetAcceleration > ALTHOLD_ACCELERATION_MAX)
+	{
+		targetAcceleration = ALTHOLD_ACCELERATION_MAX;
+	}
+	if(targetAcceleration < -ALTHOLD_ACCELERATION_MAX)
+	{
+		targetAcceleration = -ALTHOLD_ACCELERATION_MAX;
+	}
 
 	targetAcceleration = constrain_int32(targetAcceleration, -32000, 32000);
 
@@ -306,22 +326,22 @@ void AltHold::_updateAcceleration(float targetVelocity)
 
 void AltHold::_updateThrottleOutput(float targetAcceleration){
 
-#if DEBUG == ENABLED
-	hal.console->print(" Target Accel: ");
+#if ALTHOLD_DEBUG == ENABLED
+	hal.console->print("\tTarget Accel:\t");
 	hal.console->print(targetAcceleration);
 #endif
 
 	float acceleration = -(ahrs.get_accel_ef().z + GRAVITY_MSS) * 100.0f;
 
-//	float accelerationError = constrain_int32(_accel_error_filter.apply(targetAcceleration - acceleration), -32000, 32000);
-	float accelerationError = targetAcceleration - acceleration;
+	float accelerationError = constrain_int32(_accel_error_filter.apply(targetAcceleration - acceleration), -32000, 32000);
+//	float accelerationError = targetAcceleration - acceleration;
 
 	float accelPidValue = this->_accelPid->get_pid(accelerationError);
 
-#if DEBUG == ENABLED
-	hal.console->print(" Accel PID Value: ");
+#if ALTHOLD_DEBUG == ENABLED
+	hal.console->print("\tAccel PID Value:\t");
 	hal.console->print(accelPidValue);
-	hal.console->print(" /1000: ");
+	hal.console->print("\t/1000:\t");
 	hal.console->print(accelPidValue/1000.0f);
 #endif
 
@@ -342,8 +362,8 @@ void AltHold::_updateThrottleOutput(float targetAcceleration){
 
 	attitude.set_throttle_out(throttleOut, true);
 
-#if DEBUG == ENABLED
-	hal.console->print(" Throttle Output: ");
+#if ALTHOLD_DEBUG == ENABLED
+	hal.console->print("\tThrottle Output:\t");
 	hal.console->print(throttleOut);
 	hal.console->println("");
 #endif
@@ -368,6 +388,15 @@ float AltHold::sqrt_controller(float error, float p, float second_ord_lim)
     }
 }
 
+float AltHold::getZLeashLength(){
+	return _distanceLeashLength;
+}
+
+float AltHold::get_velocity(){
+	return _velocity;
+}
+
+
 bool AltHold::_caluclateHoverPoint(){
 	if(!this->_hoverPointCalculated)
 	{
@@ -389,11 +418,11 @@ bool AltHold::_caluclateHoverPoint(){
 			a_led->write(HAL_GPIO_LED_OFF);
 			b_led->write(HAL_GPIO_LED_OFF);
 			c_led->write(HAL_GPIO_LED_OFF);
-//			hal.console->print(" TIMEOUT(");
+//			hal.console->print("\tTIMEOUT(");
 //			hal.console->print(this->_hoverPoint);
-//			hal.console->print(", ");
+//			hal.console->print(",\t");
 //			hal.console->print(_oldDistance);
-//			hal.console->print(", ");
+//			hal.console->print(",\t");
 //			hal.console->print(hal.scheduler->millis() - this->_calcHoverBeginTime);
 //			hal.console->println(")");
 			if(this->_hoverPoint > RC_THROTTLE_MIN + ALTHOLD_CALC_HOVER_INCREMENT)
@@ -404,8 +433,8 @@ bool AltHold::_caluclateHoverPoint(){
 
 		attitude.set_throttle_out(this->_hoverPoint, true);
 
-#if DEBUG == ENABLED
-//		hal.console->print(" Old Distance: ");
+#if ALTHOLD_DEBUG == ENABLED
+//		hal.console->print("\tOld Distance:\t");
 //		hal.console->print(_oldDistance);
 #endif
 		if (loop_count % 20 == 0 && _gotLastDistance) {
@@ -415,37 +444,53 @@ bool AltHold::_caluclateHoverPoint(){
 			uint16_t newDistance;
 			_rangefinder->update(newDistance);
 
-#if DEBUG == ENABLED
-			hal.console->print(" New Distance: ");
+#if ALTHOLD_DEBUG == ENABLED
+			hal.console->print("\tNew Distance:\t");
 			hal.console->print(newDistance);
 #endif
 
 			float distanceDiff = newDistance - _oldDistance;
 
-#if DEBUG == ENABLED
-			hal.console->print(" Distance Diff: ");
+#if ALTHOLD_DEBUG == ENABLED
+			hal.console->print("\tDistance Diff:\t");
 			hal.console->print(distanceDiff);
 #endif
 
 			if(newDistance > ALTHOLD_CALC_HOVER_MAX_HEIGHT)
 			{
 
-#if DEBUG == ENABLED
-				hal.console->print(" Too High(");
+#if ALTHOLD_DEBUG == ENABLED
+				hal.console->print("\tToo High(");
 				hal.console->print(this->_lastHoverDown);
 				hal.console->print(")");
 #endif
+				this->_calcHoverToHigh = true;
 
 				this->_hoverPoint = this->_lastHoverDown;
 				this->_heldTime = 0;
+			}else if(this->_calcHoverToHigh){
+
+#if ALTHOLD_DEBUG == ENABLED
+				hal.console->print("\tToo High(");
+				hal.console->print(this->_lastHoverDown);
+				hal.console->print(")");
+#endif
+				if(newDistance < ALTHOLD_CALC_HOVER_MAX_HEIGHT*0.75) //75% max height
+				{
+					this->_calcHoverToHigh = false;
+				}
+
+				this->_hoverPoint -= ALTHOLD_CALC_HOVER_INCREMENT;
+				this->_heldTime = 0;
+
 			}else if(distanceDiff > ALTHOLD_CALC_HOVER_THRESHOLD)
 			{
 				this->_lastHoverUp = this->_hoverPoint;
 				this->_hoverPoint = (this->_hoverPoint + this->_lastHoverDown)/2;
 				this->_hasRisen = true;
 
-#if DEBUG == ENABLED
-				hal.console->print(" We  Rose(");
+#if ALTHOLD_DEBUG == ENABLED
+				hal.console->print("\tWe  Rose(");
 				hal.console->print(this->_hoverPoint);
 				hal.console->print(")");
 #endif
@@ -456,8 +501,8 @@ bool AltHold::_caluclateHoverPoint(){
 				this->_lastHoverDown = this->_hoverPoint;
 				this->_hoverPoint += ALTHOLD_CALC_HOVER_INCREMENT;
 
-#if DEBUG == ENABLED
-				hal.console->print(" We  Drop(");
+#if ALTHOLD_DEBUG == ENABLED
+				hal.console->print("\tWe  Drop(");
 				hal.console->print(this->_hoverPoint);
 				hal.console->print(")");
 #endif
@@ -466,8 +511,8 @@ bool AltHold::_caluclateHoverPoint(){
 			}else if(this->_hasRisen)
 			{
 
-#if DEBUG == ENABLED
-				hal.console->print(" Hovering(");
+#if ALTHOLD_DEBUG == ENABLED
+				hal.console->print("\tHovering(");
 				hal.console->print(this->_hoverPoint);
 				hal.console->print(")");
 #endif
@@ -478,12 +523,10 @@ bool AltHold::_caluclateHoverPoint(){
 				if(this->_heldTime >= ALTHOLD_CALC_HOVER_HELD_TIME)
 				{
 
-					a_led->toggle();
-					b_led->toggle();
-					c_led->toggle();
+					b_led->mode(HAL_GPIO_LED_OFF);
 
-#if DEBUG == ENABLED
-					hal.console->print(" CALCULATED: ");
+#if ALTHOLD_DEBUG == ENABLED
+					hal.console->print("\tCALCULATED:\t");
 					hal.console->print(this->_hoverPoint);
 #endif
 
@@ -498,8 +541,8 @@ bool AltHold::_caluclateHoverPoint(){
 				this->_hoverPoint += ALTHOLD_CALC_HOVER_INCREMENT;
 				this->_hasRisen = false;
 
-#if DEBUG == ENABLED
-				hal.console->print(" Getingup(");
+#if ALTHOLD_DEBUG == ENABLED
+				hal.console->print("\tGetingup(");
 				hal.console->print(this->_hoverPoint);
 				hal.console->print(")");
 #endif
@@ -514,8 +557,8 @@ bool AltHold::_caluclateHoverPoint(){
 			{
 				this->_hoverPoint = RC_THROTTLE_MAX;
 
-#if DEBUG == ENABLED
-				hal.console->print(" To  MUCH(");
+#if ALTHOLD_DEBUG == ENABLED
+				hal.console->print("\tTo  MUCH(");
 				hal.console->print(this->_hoverPoint);
 				hal.console->print(")");
 #endif
@@ -526,7 +569,7 @@ bool AltHold::_caluclateHoverPoint(){
 
 		}
 
-#if DEBUG == ENABLED
+#if ALTHOLD_DEBUG == ENABLED
 		hal.console->println("");
 #endif
 
@@ -534,5 +577,32 @@ bool AltHold::_caluclateHoverPoint(){
 
 	return this->_hoverPointCalculated;
 }
+
+static float AltHold::getAltEstimate(){
+	float estimatedAlt = 0;
+	float currentAlt = (float)lidar->getLastDistance();
+
+	 //downward facing vector with no rotation
+	Vector3f original(0,0,-1);
+
+	//rotate the orignal vector using the sensors DCM matrix
+	Vector3f rotated = ahrs.get_dcm_matrix() * original;
+
+	//this gives us the cos of the angle
+	float cosTheta = (original * rotated)/(original.length() * rotated.length());
+	float angle = acos(cosTheta);
+
+	//using sin rule
+	//a/sin(90) = b/sin(angle)
+	//sin(90) = 1
+	//a = b/sin(angle)
+	//b = a*sin(anlge)
+
+	estimatedAlt = currentAlt * sin(angle);
+
+	return estimatedAlt;
+}
+
 #endif
+
 
