@@ -72,7 +72,6 @@ public:
 	void loadHoverPoint();
 	float getZLeashLength();
 	float get_velocity();
-	static float getAltEstimate();
 private:
 	PID * _distancePid;
 	PID * _accelPid;

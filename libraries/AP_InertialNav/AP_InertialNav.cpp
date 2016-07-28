@@ -45,7 +45,9 @@ void AP_InertialNav::update(float dt)
     }
 
     // check if new baro readings have arrived and use them to correct vertical accelerometer offsets.
-    check_baro();
+//    check_baro();
+
+    check_lidar();
 
     // check if new gps readings have arrived and use them to correct position estimates
     check_gps();
@@ -290,6 +292,46 @@ float AP_InertialNav::get_velocity_xy() const
 //
 // Z Axis methods
 //
+
+void AP_InertialNav::check_lidar(){
+	uint32_t lidar_update_time;
+
+	    // calculate time since last baro reading (in ms)
+	    lidar_update_time = _lidar.getLastUpdateTime();
+	    if( lidar_update_time != _lidar_last_update ) {
+	        const float dt = (float)(lidar_update_time - _lidar_last_update) * 0.001f; // in seconds
+	        // call correction method
+	        correct_with_lidar(_lidar.getLastDistance(), dt);
+	        _lidar_last_update = lidar_update_time;
+	    }
+}
+
+// correct_with_lidar - modifies accelerometer offsets using lidar.  dt is time since last lidar reading
+void AP_InertialNav::correct_with_lidar(float lidar_alt, float dt)
+{
+    static uint8_t first_reads = 0;
+
+    // discard samples where dt is too large
+    if( dt > 0.5f ) {
+        return;
+    }
+
+    // discard first 10 reads but perform some initialisation
+    if( first_reads <= 10 ) {
+        set_altitude(lidar_alt);
+        first_reads++;
+    }
+
+	float hist_position_base_z;
+	if (_hist_position_estimate_z.is_full()) {
+		hist_position_base_z = _hist_position_estimate_z.front();
+	} else {
+		hist_position_base_z = _position_base.z;
+	}
+
+	// calculate error in position from baro with our estimate
+	_position_error.z = lidar_alt - (hist_position_base_z + _position_correction.z);
+}
 
 // check_baro - check if new baro readings have arrived and use them to correct vertical accelerometer offsets
 void AP_InertialNav::check_baro()

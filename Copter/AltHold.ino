@@ -578,31 +578,6 @@ bool AltHold::_caluclateHoverPoint(){
 	return this->_hoverPointCalculated;
 }
 
-static float AltHold::getAltEstimate(){
-	float estimatedAlt = 0;
-	float currentAlt = (float)lidar->getLastDistance();
-
-	 //downward facing vector with no rotation
-	Vector3f original(0,0,-1);
-
-	//rotate the orignal vector using the sensors DCM matrix
-	Vector3f rotated = ahrs.get_dcm_matrix() * original;
-
-	//this gives us the cos of the angle
-	float cosTheta = (original * rotated)/(original.length() * rotated.length());
-	float angle = acos(cosTheta);
-
-	//using sin rule
-	//a/sin(90) = b/sin(angle)
-	//sin(90) = 1
-	//a = b/sin(angle)
-	//b = a*sin(anlge)
-
-	estimatedAlt = currentAlt * sin(angle);
-
-	return estimatedAlt;
-}
-
 #endif
 
 

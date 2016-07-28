@@ -9,6 +9,7 @@
 #include <AP_Buffer.h>                  // FIFO buffer library
 #include <AP_GPS_Glitch.h>              // GPS Glitch detection library
 #include <AP_Baro_Glitch.h>             // Baro Glitch detection library
+#include <RangeFinder.h>
 
 #define AP_INTERTIALNAV_TC_XY   2.5f // default time constant for complementary filter's X & Y axis
 #define AP_INTERTIALNAV_TC_Z    5.0f // default time constant for complementary filter's Z axis
@@ -35,7 +36,7 @@ class AP_InertialNav
 public:
 
     // Constructor
-    AP_InertialNav(AP_AHRS &ahrs, AP_Baro &baro, GPS_Glitch& gps_glitch, Baro_Glitch &baro_glitch) :
+    AP_InertialNav(AP_AHRS &ahrs, AP_Baro &baro, GPS_Glitch& gps_glitch, Baro_Glitch &baro_glitch, RangeFinder &lidar) :
         _ahrs(ahrs),
         _baro(baro),
         _xy_enabled(false),
@@ -52,7 +53,8 @@ public:
         _baro_last_update(0),
         _glitch_detector(gps_glitch),
         _baro_glitch(baro_glitch),
-        _error_count(0)
+        _error_count(0),
+		_lidar(lidar)
         {
             AP_Param::setup_object_defaults(this, var_info);
         }
@@ -225,6 +227,7 @@ protected:
      */
     void        check_baro();
 
+
     /**
      * correct_with_baro - calculates vertical position error using barometer.
      *
@@ -232,6 +235,10 @@ protected:
      * @param dt : time since last baro reading in s
      */
     void        correct_with_baro(float baro_alt, float dt);
+
+
+    void        check_lidar();
+    void        correct_with_lidar(float lidar_alt, float dt);
 
 
     /**
@@ -258,6 +265,7 @@ protected:
 
     AP_AHRS                &_ahrs;                      // reference to ahrs object
     AP_Baro                &_baro;                      // reference to barometer
+    RangeFinder			   &_lidar;
 
     // parameters
     AP_Float                _time_constant_xy;          // time constant for horizontal corrections in s
@@ -280,6 +288,7 @@ protected:
     float                   _k2_z;                      // gain for vertical velocity correction
     float                   _k3_z;                      // gain for vertical accelerometer offset correction
     uint32_t                _baro_last_update;          // time of last barometer update in ms
+    uint32_t				_lidar_last_update;
     AP_BufferFloat_Size15   _hist_position_estimate_z;  // buffer of historic accel based altitudes to account for barometer lag
 
     // general variables

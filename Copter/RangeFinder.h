@@ -22,6 +22,7 @@ public:
 	virtual bool update();
 	virtual bool update(uint16_t &distance);
 	uint16_t getLastDistance();
+	uint32_t getLastUpdateTime(){ return timeLastUpdate;}
 private:
 protected:
 	uint16_t distCM;

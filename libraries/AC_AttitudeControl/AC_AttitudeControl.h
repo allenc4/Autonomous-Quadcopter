@@ -166,6 +166,7 @@ public:
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
+    static float sqrt_controller(float error, float p, float second_ord_lim);
 protected:
 
     // attitude control flags

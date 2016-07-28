@@ -147,7 +147,7 @@ AC_AttitudeControl attitude(ahrs,
 
 GPS_Glitch gps_glitch(gps);
 Baro_Glitch baro_glitch(barometer);
-AP_InertialNav inav(ahrs, barometer, gps_glitch, baro_glitch);
+AP_InertialNav inav(ahrs, barometer, gps_glitch, baro_glitch, *lidar);
 
 AC_P p_alt_pos(1);
 AC_P p_alt_rate(1);
@@ -158,7 +158,7 @@ AC_PID pid_rate_lon(0.1,0,0,0);
 
 AC_PosControl pos_control(ahrs, inav, motors, attitude,
         p_alt_pos, p_alt_rate, pid_alt_accel,
-        p_pos_xy, pid_rate_lat, pid_rate_lon, lidar);
+        p_pos_xy, pid_rate_lat, pid_rate_lon);
 
 Serial serial(hal.uartB);
 
@@ -330,7 +330,10 @@ void fast_loop() {
 
 	//update the Gd_t integration time
 	uint32_t timer = hal.scheduler->micros();
+
     G_Dt = (float)(timer - fastLoopTimer) / 1000000.f;
+    pos_control.set_dt(G_Dt);
+
     fastLoopTimer = timer;
 
     // IMU DCM Algorithm

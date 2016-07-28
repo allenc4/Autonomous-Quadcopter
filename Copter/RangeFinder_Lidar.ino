@@ -77,7 +77,6 @@ bool RangeFinder_Lidar::update() {
 	}
 
 	//correct for quad tilt
-
 	 //downward facing vector with no rotation
 	Vector3f original(0,0,-1);
 
