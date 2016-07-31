@@ -421,6 +421,8 @@ void fast_loop() {
 		case MOTORS_ARMED:
 #if DEBUG == ENABLED
 			hal.console->print("motors armed\n");
+#endif
+#if LIDAR == ENABLED
 			inav.set_altitude(0.0f);
 #endif
 			motors.armed(true);

@@ -320,6 +320,7 @@ int16_t get_pilot_desired_climb_rate(int16_t throttle_control)
     return desired_rate;
 }
 
+#if LIDAR == ENABLED
 // get_throttle_surface_tracking - hold copter at the desired distance above the ground
 //      returns climb rate (in cm/s) which should be passed to the position controller
 float get_throttle_surface_tracking(int16_t target_rate, float current_alt_target, float dt)
@@ -355,3 +356,5 @@ void set_throttle_takeoff()
    // tell motors to do a slow start
    motors.slow_start(true);
 }
+
+#endif
