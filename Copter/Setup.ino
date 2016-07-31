@@ -14,12 +14,12 @@ bool Init_Arducopter() {
 
 //	hal.storage->init(NULL);
 
-	// we don't want writes to the serial port to cause us to pause
-	// mid-flight, so set the serial ports non-blocking once we are
-	// ready to fly
-
+	// We don't want writes to the serial port to cause us to pause
+	// mid-flight with UART 2 and 3 busses, so set the serial ports non-blocking once we are
+	// ready to fly.
+	// Note that we need blocking write for UART 1 (or A)
 #if DEBUG == DISABLED
-		hal.uartA->set_blocking_writes(false);
+		hal.uartA->set_blocking_writes(true);
 		hal.uartB->set_blocking_writes(false);
 		hal.uartC->set_blocking_writes(false);
 #endif
@@ -114,9 +114,10 @@ bool Init_Arducopter() {
 		return false;
 	}
 
-	if (DEBUG == ENABLED) {
-		hal.console->println("LIDAR initialized...");
-	}
+#if DEBUG == ENABLED
+	hal.console->println("LIDAR initialized...");
+#endif
+
 
 	// Initialize the Optical Flow sensor and ensure it is connected at startup
 #if OPTFLOW == ENABLED
@@ -180,9 +181,9 @@ void flashLeds(bool flash){
  */
 void Setup_Motors() {
 
-	if (DEBUG) {
+#if DEBUG == ENABLED
 		hal.console->println("Setting up motors.");
-	}
+#endif
 
 	// Enable output to the motors
 //	hal.rcout->set_freq(0xF, RC_FAST_SPEED);  // Send 490Hz pulse to negate ESC averaging filter effect

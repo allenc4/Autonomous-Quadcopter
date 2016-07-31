@@ -25,8 +25,9 @@ public:
 	Serial(AP_HAL::UARTDriver *driver);
 	void init(uint32_t baudRate);
 	void read();
-	void write(const char *str);
+	void write(const char *str, bool appendChecksum=true);
 	uint32_t lastReceiveTime();
+	long calculateChecksum(const char *str);
 
 private:
 	void process(char *cmd);
@@ -37,6 +38,7 @@ private:
 	uint32_t _lastPktTime;
 
 	char _readBuf[512];
+	int16_t _readBufLen;
 	char _cmdBuf[512];
 	char _param[255];
 	char _value[255];

@@ -41,14 +41,18 @@ bool RangeFinder_Lidar::update() {
 
 	// If we can't get the semaphore, exit immediately
 	if (!i2c_sem->take(1)) {
+#if DEBUG == ENABLED
 		hal.console->printf("Couldn't get semaphore for I2C\n");
+#endif
 		numReadFails++;
 		return false;
 	}
 
 	// Send command to lidar to take reading
 	if (hal.i2c->writeRegister(LIDAR_ADDRESS, REGISTER_MEASURE, MEASURE_VALUE) != 0) {
+#if DEBUG == ENABLED
 		hal.console->printf("Error writing to LIDAR register\n");
+#endif
 		numReadFails++;
 		i2c_sem->give();
 		return false;
@@ -62,7 +66,9 @@ bool RangeFinder_Lidar::update() {
 	// Read the high and low byte distance registers
 	if (hal.i2c->readRegisters(LIDAR_ADDRESS, REGISTER_HIGH_LOW_BYTES, 2, &buf[0]) != 0) {
 		// Problem reading
+#if DEBUG == ENABLED
 		hal.console->printf("Error reading from LIDAR\n");
+#endif
 		numReadFails++;
 		i2c_sem->give();
 		return false;

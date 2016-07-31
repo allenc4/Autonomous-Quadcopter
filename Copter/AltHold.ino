@@ -103,7 +103,9 @@ void AltHold::holdAltitute(){
 	//if we have no throttle input do nothing
 	if(currentThrottle <= RC_THROTTLE_MIN+75) //this is the current min_throttle_offset variable should be changed to a var not harcoded
 	{
+#if DEBUG == ENABLED
 		hal.console->println("Need throttle to move");
+#endif
 		this->_lastState = ALTHOLD_STOPPED;
 		return;
 	}
@@ -185,7 +187,9 @@ void AltHold::holdAltitute(){
 			desiredDistance = ALTHOLD_HEIGHT_MIN;
 			break;
 		default:
+#if DEBUG == ENABLED
 			hal.console->println("Could not figure out state landing");
+#endif
 			desiredDistance = ALTHOLD_HEIGHT_LAND;
 			break;
 	}
