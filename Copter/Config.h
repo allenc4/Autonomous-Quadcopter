@@ -15,14 +15,14 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG			DISABLED
+#define DEBUG			ENABLED
 #define ESC_CALIBRATE	DISABLED
 #define ACCEL_CALIBRATE DISABLED
 #define MOTOR_OUTPUT	ENABLED
 #define CLI_COMMANDS	DISABLED
 
 // Enable lIDAR Lite range finder
-#define LIDAR			ENABLED
+#define LIDAR			DISABLED
 
 // Optical Flow sensor
 #define OPTFLOW			DISABLED

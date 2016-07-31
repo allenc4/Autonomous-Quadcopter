@@ -416,13 +416,17 @@ void Parameters::load_parameters()
 	     g.format_version != Parameters::k_format_version) {
 
 		// erase all parameters
+#if DEBUG == ENABLED
 		hal.console->printf_P(PSTR("Firmware change (%u -> %u): erasing EEPROM...\n"),
 						g.format_version.get(), Parameters::k_format_version);
+#endif
 		AP_Param::erase_all();
 
 		// save the current format version
 		g.format_version.set_and_save(Parameters::k_format_version);
+#if DEBUG == ENABLED
 		hal.console->println_P(PSTR("done."));
+#endif
     } else {
 	    unsigned long before = hal.scheduler->micros();
 	    // Load all auto-loaded EEPROM variables

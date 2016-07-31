@@ -160,7 +160,7 @@ AC_PosControl pos_control(ahrs, inav, motors, attitude,
         p_pos_xy, pid_rate_lat, pid_rate_lon);
 #endif
 
-Serial serial(hal.uartB);
+Serial serial(hal.uartA);
 
 int8_t flightMode;
 
@@ -267,10 +267,10 @@ void setup()
 					prev_sensor_roll, sensor_roll,
 					prev_sensor_yaw, sensor_yaw);
 
-			hal.console->printf("Current sensor reading vs previous....      Pitch: %0.6f   Roll: %0.6f   Yaw: %0.6f\n:",
-					fabsf(prev_sensor_pitch - sensor_pitch),
-					fabsf(prev_sensor_roll - sensor_roll),
-					fabsf(prev_sensor_yaw - sensor_yaw));
+//			hal.console->printf("Current sensor reading vs previous....      Pitch: %0.6f   Roll: %0.6f   Yaw: %0.6f\n:",
+//					fabsf(prev_sensor_pitch - sensor_pitch),
+//					fabsf(prev_sensor_roll - sensor_roll),
+//					fabsf(prev_sensor_yaw - sensor_yaw));
 
 		}
 
@@ -292,6 +292,9 @@ void setup()
 	c_led->write(HAL_GPIO_LED_ON);
 
 	lastMode = NO_MODE;
+
+	// Send command to Pi saying we are done with setup
+	serial.write("APM connected");
 
 }
 
@@ -369,7 +372,7 @@ void fast_loop() {
     rc_read();
 
     // Read in from serial connection
-//    serial.read();
+    serial.read();
 
     //handle mode changes
 	if(rc_channels[RC_CHANNEL_THROTTLE].radio_in <= rc_channels[RC_CHANNEL_THROTTLE].radio_min  + 75) {
@@ -416,12 +419,16 @@ void fast_loop() {
 	if(modeSelectTimer > MODE_SELECT_TIME) {
 		switch (lastMode) {
 		case MOTORS_ARMED:
+#if DEBUG == ENABLED
 			hal.console->print("motors armed\n");
 			inav.set_altitude(0.0f);
+#endif
 			motors.armed(true);
 			break;
 		case MOTORS_DISARMED:
+#if DEBUG == ENABLED
 			hal.console->print("motors disarmed\n");
+#endif
 			motors.armed(false);
 			break;
 		case CHANGE_FLIGHT_MODE:
@@ -496,6 +503,7 @@ void fast_loop() {
 		}
 	}else {
 		attitude.set_throttle_out(motors.throttle_min(), false);
+#if LIDAR == ENABLED
 		if(lidar->getLastDistance() <= 2){
 
 	//		hal.console->println("Landed");
@@ -513,6 +521,7 @@ void fast_loop() {
 #endif
 			}
 		}
+#endif
 	}
 }
 
