@@ -3,6 +3,7 @@
 #include <AC_PosControl.h>
 
 extern const AP_HAL::HAL& hal;
+long loop_count_0 = 0;
 
 const AP_Param::GroupInfo AC_PosControl::var_info[] PROGMEM = {
     // @Param: THR_HOVER
@@ -55,6 +56,8 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
     _vel_xyz_step(0)
 {
     AP_Param::setup_object_defaults(this, var_info);
+
+    _throttle_hover = 495;
 
     // initialise flags
     _flags.force_recalc_xy = false;
@@ -125,14 +128,30 @@ void AC_PosControl::set_alt_target_with_slew(float alt_cm, float dt)
     
     _vel_desired.z = constrain_float(alt_change * dt, _speed_down_cms, _speed_up_cms);
 
-    // adjust desired alt if motors have not hit their limits
-    if ((alt_change<0 && !_motors.limit.throttle_lower) || (alt_change>0 && !_motors.limit.throttle_upper)) {
-        _pos_target.z += constrain_float(alt_change, _speed_down_cms*dt, _speed_up_cms*dt);
-    }
+    _pos_target.z += constrain_float(alt_change, _speed_down_cms*dt, _speed_up_cms*dt);
 
     // do not let target get too far from current altitude
     float curr_alt = _inav.get_altitude();
     _pos_target.z = constrain_float(_pos_target.z,curr_alt-_leash_down_z,curr_alt+_leash_up_z);
+
+//    if(loop_count_0 % 20 == 0)
+//    {
+//    	hal.console->print("G_Dt: ");
+//    	hal.console->printf("%4.5f", dt);
+//    	hal.console->print("\tLower: ");
+//    	hal.console->printf("%4.5f",_speed_down_cms*dt);
+//    	hal.console->print("\tUpper: ");
+//    	hal.console->printf("%4.5f",_speed_up_cms*dt);
+//		hal.console->print("AltCM: ");
+//		hal.console->printf("%4.5f",alt_cm);
+//		hal.console->print("\tAltChange: ");
+//		hal.console->printf("%4.5f",alt_change);
+//		hal.console->print("\ttarget dist: ");
+//		hal.console->printf("%4.5f",_pos_target.z);
+//		hal.console->print("\tCurrent Alt: ");
+//		hal.console->printf("%4.5f\n",curr_alt);
+//    }
+//    loop_count_0++;
 }
 
 /// set_alt_target_from_climb_rate - adjusts target up or down using a climb rate in cm/s
@@ -293,7 +312,8 @@ void AC_PosControl::pos_to_rate_z()
     }
 
     // call rate based throttle controller which will update accel based throttle controller targets
-    rate_to_accel_z();
+    _attitude_control.set_throttle_out((int16_t)_vel_target.z+_throttle_hover, true);
+//    rate_to_accel_z();
 }
 
 // rate_to_accel_z - calculates desired accel required to achieve the velocity target
@@ -357,6 +377,7 @@ void AC_PosControl::rate_to_accel_z()
     desired_accel = _accel_feedforward.z + p;
     desired_accel = constrain_int32(desired_accel, -32000, 32000);
 
+
     // set target for accel based throttle controller
     accel_to_throttle(desired_accel);
 }
@@ -399,6 +420,7 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
 
     // To-Do: pull min/max throttle from motors
     // To-Do: we had a contraint here but it's now removed, is this ok?  with the motors library handle it ok?
+//    hal.console->println(p+i+d+_throttle_hover);
     _attitude_control.set_throttle_out((int16_t)p+i+d+_throttle_hover, true);
 
     // to-do add back in PID logging?

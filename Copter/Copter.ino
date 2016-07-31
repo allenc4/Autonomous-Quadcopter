@@ -61,7 +61,6 @@
 #include "OpticalFlow.h"
 //#include "RadioController.h"
 #include "RangeFinder_Lidar.h"
-#include "AltHold.h"
 #include "Serial.h"
 
 // ArduPilot Hardware Abstraction Layer (HAL)
@@ -149,12 +148,12 @@ GPS_Glitch gps_glitch(gps);
 Baro_Glitch baro_glitch(barometer);
 AP_InertialNav inav(ahrs, barometer, gps_glitch, baro_glitch, *lidar);
 
-AC_P p_alt_pos(1);
-AC_P p_alt_rate(1);
-AC_PID pid_alt_accel(0.5,0,0,0);
-AC_P p_pos_xy(0.5);
-AC_PID pid_rate_lat(0.1,0,0,0);
-AC_PID pid_rate_lon(0.1,0,0,0);
+AC_P p_alt_pos(0.5f);
+AC_P p_alt_rate(5);
+AC_PID pid_alt_accel(0.5,1,0,80);
+AC_P p_pos_xy(1);
+AC_PID pid_rate_lat(1,0.5,0,100);
+AC_PID pid_rate_lon(1,0.5,0,100);
 
 AC_PosControl pos_control(ahrs, inav, motors, attitude,
         p_alt_pos, p_alt_rate, pid_alt_accel,
@@ -174,7 +173,6 @@ int32_t of_pitch;
 uint32_t loop_count;
 
 // System Timers
-uint32_t G_Dt;
 uint32_t fastLoopTimer = 0;
 //timer for how often medium loop should be executed
 uint32_t mediumLoopExecute = 500;		
@@ -186,7 +184,7 @@ uint32_t slowLoopExecute = 1000;
 uint32_t slowLoopLastExecute = 0;		
 
 //Integration time for pids
-float Gd_t = 0.02;
+float G_Dt = 0.02;
 
 void setup()
 {
@@ -327,7 +325,8 @@ void fast_loop() {
 	//update the Gd_t integration time
 	uint32_t timer = hal.scheduler->micros();
 
-    G_Dt = (float)(timer - fastLoopTimer) / 1000000.f;
+    G_Dt = (float)(timer - fastLoopTimer);
+    G_Dt /= 1000000.0f;
 
     fastLoopTimer = timer;
 
@@ -418,6 +417,7 @@ void fast_loop() {
 		switch (lastMode) {
 		case MOTORS_ARMED:
 			hal.console->print("motors armed\n");
+			inav.set_altitude(0.0f);
 			motors.armed(true);
 			break;
 		case MOTORS_DISARMED:
@@ -494,8 +494,25 @@ void fast_loop() {
 		if (flightMode == FLIGHT_MODE_STABLE) {
 			stabilize_run();
 		}
-	}else{
+	}else {
+		attitude.set_throttle_out(motors.throttle_min(), false);
+		if(lidar->getLastDistance() <= 2){
 
+	//		hal.console->println("Landed");
+
+			if(flightMode == FLIGHT_MODE_ALTHOLD)
+			{
+				attitude.set_throttle_out(motors.throttle_min(), false);
+				attitude.relax_bf_rate_controller();
+				attitude.set_yaw_target_to_current_heading();
+				// move throttle to between minimum and non-takeoff-throttle to keep us on the ground
+				pos_control.set_alt_target_to_current_alt();
+				inav.set_altitude(0.0f);
+#if OPTICAL_FLOW == ENABLED
+				optFlow.reset_I();
+#endif
+			}
+		}
 	}
 }
 

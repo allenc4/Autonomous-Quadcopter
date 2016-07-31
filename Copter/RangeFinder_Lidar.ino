@@ -11,11 +11,17 @@ bool RangeFinder_Lidar::init() {
 	// FOR TESTING OF OPTICAL FLOW SENSOR ONLY
 	///////////////////////////////////////////////////////////////////
 //	return true;
-	_starting_distance_offset = 0;
+
+	// calculated on flat surface and hardcoded
+	// so that we can start on angles or surfaces where the ground
+	// is not flush with the bottom of the quad
+	_starting_distance_offset = 12;
+
 	hal.i2c->setTimeout(50);
 
+	hal.scheduler->delay(100);
 	// Send command to lidar to take reading
-	if (!update(_starting_distance_offset)) {
+	if (!update()) {
 		return false;
 	} else {
 		return true;
@@ -95,7 +101,8 @@ bool RangeFinder_Lidar::update() {
 	//sin(90) = 1
 	//a = b/sin(angle)
 	//b = a*sin(angle)
-	distCM *= sin(angle);
+	if(angle > 0) //studpidity
+		distCM *= cos(angle);
 
 	i2c_sem->give();
 	numReadFails = 0;  // Reset numReadFails since we only count consecutive failures
@@ -114,6 +121,8 @@ bool RangeFinder_Lidar::update() {
 bool RangeFinder_Lidar::update(uint16_t &distance) {
 	bool stat = update();
 	if (stat) {
+		hal.console->print("DIST: ");
+		hal.console->println(distCM);
 		distance = distCM;
 	}
 	return stat;

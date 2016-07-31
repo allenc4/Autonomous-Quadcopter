@@ -3,6 +3,7 @@
 #include <AP_InertialNav.h>
 
 extern const AP_HAL::HAL& hal;
+int lc = 0;
 
 // table of user settable parameters
 const AP_Param::GroupInfo AP_InertialNav::var_info[] PROGMEM = {
@@ -71,20 +72,40 @@ void AP_InertialNav::update(float dt)
     position_error_hbf.x = _position_error.x * _ahrs.cos_yaw() + _position_error.y * _ahrs.sin_yaw();
     position_error_hbf.y = -_position_error.x * _ahrs.sin_yaw() + _position_error.y * _ahrs.cos_yaw();
 
+    _position_error.z = 0;
+
     float tmp = _k3_xy * dt;
     accel_correction_hbf.x += position_error_hbf.x * tmp;
     accel_correction_hbf.y += position_error_hbf.y * tmp;
     accel_correction_hbf.z += _position_error.z * _k3_z  * dt;
+
+//    if(lc % 20 == 0)
+//    {
+//    	hal.console->printf("Error(%4.2f, %4.2f, %4.2f)",
+//				_position_error.x, _position_error.y, _position_error.z);
+//    }
 
     tmp = _k2_xy * dt;
     _velocity.x += _position_error.x * tmp;
     _velocity.y += _position_error.y * tmp;
     _velocity.z += _position_error.z * _k2_z  * dt;
 
+//    if(lc % 20 == 0)
+//    {
+//    	hal.console->printf("Vel(%4.2f, %4.2f, %4.2f)",
+//    			_velocity.x, _velocity.y, _velocity.z);
+//    }
+
     tmp = _k1_xy * dt;
     _position_correction.x += _position_error.x * tmp;
     _position_correction.y += _position_error.y * tmp;
     _position_correction.z += _position_error.z * _k1_z  * dt;
+//
+//    if(lc % 20 == 0)
+//    {
+//    	hal.console->printf("Correction(%4.2f, %4.2f, %4.2f)",
+//				_position_correction.x, _position_correction.y, _position_correction.z);
+//    }
 
     // convert horizontal body frame accel correction to earth frame
     Vector2f accel_correction_ef;
@@ -97,11 +118,32 @@ void AP_InertialNav::update(float dt)
     velocity_increase.y = (accel_ef.y + accel_correction_ef.y) * dt;
     velocity_increase.z = (accel_ef.z + accel_correction_hbf.z) * dt;
 
+//    if(lc % 20 == 0)
+//	{
+//		hal.console->printf("Vel Inc(%4.2f, %4.2f, %4.2f) ",
+//				velocity_increase.x, velocity_increase.y, velocity_increase.z);
+//	}
+
     // calculate new estimate of position
     _position_base += (_velocity + velocity_increase*0.5) * dt;
 
+//    if(lc % 20 == 0)
+//    {
+//    	hal.console->printf("Base(%4.2f, %4.2f, %4.2f) ",
+//				_position_base.x, _position_base.y, _position_base.z);
+//    }
+
     // update the corrected position estimate
     _position = _position_base + _position_correction;
+    _position.z = _lidar.getLastDistance();
+
+//    if(lc % 20 == 0)
+//    {
+//    	hal.console->printf("Pos(%4.2f, %4.2f, %4.2f)\n",
+//				_position.x, _position.y, _position.z);
+//    }
+//
+//    lc++;
 
     // calculate new velocity
     _velocity += velocity_increase;
@@ -321,15 +363,15 @@ void AP_InertialNav::correct_with_lidar(float lidar_alt, float dt)
         first_reads++;
     }
 
-	float hist_position_base_z;
-	if (_hist_position_estimate_z.is_full()) {
-		hist_position_base_z = _hist_position_estimate_z.front();
-	} else {
-		hist_position_base_z = _position_base.z;
-	}
+//	float hist_position_base_z;
+//	if (_hist_position_estimate_z.is_full()) {
+//		hist_position_base_z = _hist_position_estimate_z.front();
+//	} else {
+//		hist_position_base_z = _position_base.z;
+//	}
 
 	// calculate error in position from baro with our estimate
-	_position_error.z = lidar_alt - (hist_position_base_z + _position_correction.z);
+	_position_error.z = lidar_alt - (_position_base.z + _position_correction.z);
 }
 
 // check_baro - check if new baro readings have arrived and use them to correct vertical accelerometer offsets

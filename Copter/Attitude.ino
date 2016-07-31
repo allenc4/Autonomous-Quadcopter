@@ -158,7 +158,6 @@ void ofLoiter_run()
 void altHold_run() {
 	int16_t target_roll, target_pitch;
 	float target_yaw_rate;
-	int16_t target_climb_rate;
 
 	// if not armed or throttle at zero, set throttle to zero and exit immediately
 	if(!motors.armed() || rc_channels[RC_CHANNEL_THROTTLE].control_in <= 0) {
@@ -180,36 +179,39 @@ void altHold_run() {
 	target_yaw_rate = get_pilot_desired_yaw_rate(
 			rc_channels[RC_CHANNEL_YAW].control_in);
 
-	target_climb_rate = get_pilot_desired_climb_rate(rc_channels[RC_CHANNEL_THROTTLE].control_in);
+	 float target_alt_cm = map(rc_channels[RC_CHANNEL_THROTTLE].radio_in, RC_THROTTLE_MIN, RC_THROTTLE_MAX, 10, 150);
 
 
 	// Check to see if we have landed (+/- 2 cm from the initial starting position)
-    bool landed = (lidar->getLastDistance() <= 2) && rc_channels[RC_CHANNEL_THROTTLE].control_in == 0;
+    bool landed = lidar->getLastDistance() <= 2;
 
-    if(landed && target_climb_rate > 0)
+    if(landed && target_alt_cm > 0)
     {
+//    	hal.console->println("Taking Off");
+
     	landed = false;
     	set_throttle_takeoff();
-    }
+    } //else if (landed) {
+////    	hal.console->println("Landed");
+//    	// when landed reset targets and output zero throttle
+//    	attitude.relax_bf_rate_controller();
+//		attitude.set_yaw_target_to_current_heading();
+//		// move throttle to between minimum and non-takeoff-throttle to keep us on the ground
+//		attitude.set_throttle_out(motors.throttle_min(), false);
+//		pos_control.set_alt_target_to_current_alt();
+//		inav.set_altitude(0.0f);
+//	}
 
-	// when landed reset targets and output zero throttle
-	if (landed) {
-		attitude.relax_bf_rate_controller();
-		attitude.set_yaw_target_to_current_heading();
-		// move throttle to between minimum and non-takeoff-throttle to keep us on the ground
-		attitude.set_throttle_out(motors.throttle_min(), false);
-		pos_control.set_alt_target_to_current_alt();
-	} else {
-
+    if(!landed && target_alt_cm > 0) {
+//    	hal.console->println("outputting");
 		// call attitude controller
 	    attitude.angle_ef_roll_pitch_rate_ef_yaw_smooth(target_roll, target_pitch, target_yaw_rate, get_smoothing_gain());
 	    // body-frame rate controller is run directly from 100hz loop
 
-	    target_climb_rate = get_throttle_surface_tracking(target_climb_rate, pos_control.get_alt_target(), G_Dt);
+//	    target_climb_rate = get_throttle_surface_tracking(target_climb_rate, pos_control.get_alt_target(), G_Dt);
 	   // pos_control.set_alt_target_from_climb_rate(target_climb_rate, G_Dt);
 
 	    //sets target alt to a distance
-	    float target_alt_cm = map(rc_channels[RC_CHANNEL_THROTTLE].radio_in, RC_THROTTLE_MIN, RC_THROTTLE_MAX, 10, 150);
 	    pos_control.set_alt_target_with_slew(target_alt_cm, G_Dt);
 
 	    // call position controller (which internally calls set_throttle_out)
@@ -334,7 +336,7 @@ float get_throttle_surface_tracking(int16_t target_rate, float current_alt_targe
 
     // do not let target altitude get too far from current altitude above ground
     // Note: the 750cm limit is perhaps too wide but is consistent with the regular althold limits and helps ensure a smooth transition
-    target_lidar_alt = constrain_float(target_lidar_alt,(float)lidar->getLastDistance()-altHold.getZLeashLength(),(float)lidar->getLastDistance()-altHold.getZLeashLength());
+//    target_lidar_alt = constrain_float(target_lidar_alt,(float)lidar->getLastDistance()-,(float)lidar->getLastDistance()-altHold.getZLeashLength());
 
     // calc desired velocity correction from target sonar alt vs actual sonar alt (remove the error already passed to Altitude controller to avoid oscillations)
     distance_error = (target_lidar_alt - lidar->getLastDistance());

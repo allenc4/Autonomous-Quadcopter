@@ -143,6 +143,10 @@ bool Init_Arducopter() {
 //	hal.scheduler->delay(50);
 //	hal.scheduler->resume_timer_procs();
 
+#if LIDAR == ENABLED
+	inav.init();
+	inav.setup_home_position();
+#endif
 
 	return true;
 }
