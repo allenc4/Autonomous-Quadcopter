@@ -143,6 +143,10 @@ AC_AttitudeControl attitude(ahrs,
 		g.p_stabilize_roll, g.p_stabilize_pitch, g.p_stabilize_yaw,
         g.pid_rate_roll, g.pid_rate_pitch, g.pid_rate_yaw);
 
+// Yaw correction
+float target_yaw;
+
+
 #if LIDAR == ENABLED
 GPS_Glitch gps_glitch(gps);
 Baro_Glitch baro_glitch(barometer);
@@ -292,6 +296,9 @@ void setup()
 	c_led->write(HAL_GPIO_LED_ON);
 
 	lastMode = NO_MODE;
+
+	// Initialize the target_yaw to be at the current heading
+	initYaw();
 
 	// Send command to Pi saying we are done with setup
 	serial.write("APM connected");
@@ -473,6 +480,8 @@ void fast_loop() {
 
 	// run low level rate controllers that only require IMU data
 	attitude.rate_controller_run();
+
+	correct_yaw();
 
 	// Send radio output (modified with stabilize control or optflow control) to motors.
 	// This function only outputs a signal to the ESCs if the motors are armed AND enabled.

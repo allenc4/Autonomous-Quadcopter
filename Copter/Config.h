@@ -15,7 +15,7 @@
 
 // Debug flag. If enabled, allows for CLI interaction with board.
 // For debugging/testing only. Disable when used for flight
-#define DEBUG			ENABLED
+#define DEBUG			DISABLED
 #define ESC_CALIBRATE	DISABLED
 #define ACCEL_CALIBRATE DISABLED
 #define MOTOR_OUTPUT	ENABLED
@@ -326,16 +326,16 @@
 #endif
 
 #ifndef RATE_YAW_P
- # define RATE_YAW_P              	0.200f
+ # define RATE_YAW_P              	1.500f//0.200f
 #endif
 #ifndef RATE_YAW_I
- # define RATE_YAW_I              	0.015f
+ # define RATE_YAW_I              	1.0f
 #endif
 #ifndef RATE_YAW_D
  # define RATE_YAW_D              	0.000f
 #endif
 #ifndef RATE_YAW_IMAX
- # define RATE_YAW_IMAX            	8.0f          // degrees
+ # define RATE_YAW_IMAX            	50.0f          // degrees
 #endif
 
 

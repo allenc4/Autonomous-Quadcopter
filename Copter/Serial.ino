@@ -130,6 +130,7 @@ void Serial::process(char *cmd) {
 	char t[200];
 	snprintf(t, sizeof(t), "Attempting to process |%s|\n", cmd);
 	write(t);
+	hal.scheduler->delay(200);
 #endif
 
 	// Check for initial start first because that wont have a :value
@@ -156,6 +157,18 @@ void Serial::process(char *cmd) {
 				rc_channels[RC_CHANNEL_YAW].radio_trim);
 
 		write(t);
+		return;
+	} else if (strcmp(cmd, "trim_radio") == 0) {
+		for (int i = RC_CHANNEL_MIN; i <= RC_CHANNEL_MAX; i++) {
+			rc_channels[i].trim();
+		}
+
+		// Save trim values to eeprom
+		g.roll_trim.set_and_save(rc_channels[RC_CHANNEL_ROLL].radio_in);
+		g.pitch_trim.set_and_save(rc_channels[RC_CHANNEL_PITCH].radio_in);
+		g.yaw_trim.set_and_save(rc_channels[RC_CHANNEL_YAW].radio_in);
+		g.throttle_trim.set_and_save(rc_channels[RC_CHANNEL_THROTTLE].radio_in);
+		write("Trimming RC channels", false);
 		return;
 	}
 
@@ -201,19 +214,19 @@ void Serial::process(char *cmd) {
 		valIsNum = true;
 	}
 
-	if (strcmp(_param, "thr")) {
+	if (strcmp(_param, "throttle") == 0) {
 		if (valIsNum) {
 			rc_channels[RC_CHANNEL_THROTTLE].set_pwm(val);
 		}
-	} else if (strcmp(_param, "roll")) {
+	} else if (strcmp(_param, "roll") == 0) {
 		if (valIsNum) {
 			rc_channels[RC_CHANNEL_ROLL].set_pwm(val);
 		}
-	} else if (strcmp(_param, "pitch")) {
+	} else if (strcmp(_param, "pitch") == 0) {
 		if (valIsNum) {
 			rc_channels[RC_CHANNEL_PITCH].set_pwm(val);
 		}
-	} else if (strcmp(_param, "yaw")) {
+	} else if (strcmp(_param, "yaw") == 0) {
 		if (valIsNum) {
 			rc_channels[RC_CHANNEL_YAW].set_pwm(val);
 		}
@@ -227,7 +240,7 @@ void Serial::process(char *cmd) {
 	}
 
 #if DEBUG == ENABLED
-	t[200];
+	char t[200];
 	snprintf(t, sizeof(t), "Set %s to %s\n", _param, _value);
 	write(t);
 #endif

@@ -1,5 +1,6 @@
 #include "OpticalFlow.h"
 
+#if OPTFLOW == ENABLED
 OpticalFlow::OpticalFlow(RangeFinder *rf) {
 	rangeFinder = rf;
 	last_of_update = 0;
@@ -191,3 +192,4 @@ void OpticalFlow::debug_print() {
 void OpticalFlow::read(uint32_t now) {
 	_optflow.read();
 }
+#endif

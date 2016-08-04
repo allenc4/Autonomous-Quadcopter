@@ -248,3 +248,14 @@ void Setup_RC_Channels() {
 	}
 
 }
+
+/**
+ * Before calling output, call this function to set the target yaw output to be the
+ * current sensor yaw value. This should be called in the setup() function, not in loop()
+ */
+void initYaw() {
+	ahrs.update();
+
+	// Get the desired yaw rate in centi-degrees
+	target_yaw = ahrs.yaw_sensor/100.0f;
+}

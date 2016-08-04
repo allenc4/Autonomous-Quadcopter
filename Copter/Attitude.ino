@@ -358,3 +358,36 @@ void set_throttle_takeoff()
 }
 
 #endif
+
+void correct_yaw() {
+
+	float sensor_yaw = ahrs.yaw_sensor/100.0f;
+	float desiredYaw = wrap_180_cd(target_yaw - sensor_yaw);
+
+	desiredYaw = constrain_float(desiredYaw, -4500.0f, 4500.0f);
+
+	// Stability PIDS
+	float stab_output_yaw = constrain_float(
+		g.p_stabilize_yaw.get_p(desiredYaw),
+		-360,
+		360);
+
+	// If controller asks for yaw change, overwrite stab_output for the yaw value
+	// Yaw value will be between -150 and 150 so if there is a radio value greater than a 5
+	// degree offset, rotate
+	if (abs(rc_channels[RC_CHANNEL_YAW].control_in) > 100) {
+		hal.console->printf("Resetting yaw. CI value: %d\n", rc_channels[RC_CHANNEL_YAW].control_in);
+		stab_output_yaw = rc_channels[RC_CHANNEL_YAW].control_in;
+		target_yaw = sensor_yaw; // remember for when radio stops
+	}
+
+	// Acrobatic/rate PIDs
+	long yaw_output = constrain_int16(
+		g.pid_rate_yaw.get_pid((stab_output_yaw * ACRO_YAW_RATE) - ahrs.get_gyro().z, 1),
+			-500,
+			500);
+
+	if (loop_count % 20 == 0)
+		hal.console->printf("Setting yaw to: %ld\n", yaw_output);
+	motors.set_yaw(yaw_output);
+}
